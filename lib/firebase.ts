@@ -1,10 +1,6 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from 'firebase/app';
-import { getAnalytics, isSupported } from 'firebase/analytics';
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,10 +13,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Using getApps().length to prevent re-initialization during Hot Module Replacement (HMR)
+const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Analytics safely
-let analytics;
+let analytics: Analytics | undefined;
 if (typeof window !== 'undefined') {
   isSupported().then((supported) => {
     if (supported) {
