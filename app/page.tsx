@@ -1,65 +1,155 @@
-import Image from "next/image";
+import StatCard from '@/components/StatCard';
+import styles from './page.module.css';
 
 export default function Home() {
+  const stats = [
+    { title: 'Total Users', value: '1,248', subtitle: '+12% this month', icon: '👥', variant: 'dark' },
+    { title: 'Pending Approvals', value: '23', subtitle: 'Requires attention', icon: '⏳', variant: 'default' },
+    { title: 'Open Disputes', value: '4', subtitle: '2 overdue', icon: '⚠️', variant: 'default' },
+    { title: 'Active Rentals', value: '82%', subtitle: 'Optimal workload', icon: '🔄', variant: 'default' },
+  ];
+
+  const tasks = [
+    { title: 'Review KTP for Budi Santoso', subtitle: 'ID Verification • 1h ago', status: 'error' },
+    { title: 'Resolve dispute TRX-9884', subtitle: 'Mediation • 2h ago', status: 'primary' },
+    { title: 'Update system config', subtitle: 'Maintenance • 4h ago', status: 'success' },
+    { title: 'Weekly report generation', subtitle: 'Automated • 12h ago', status: 'primary' },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <div>
+          <h1 className={styles.greeting}>Hello, Admin! 👋</h1>
+          <p className={styles.subtitle}>Welcome back! Here&apos;s your platform overview.</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className={styles.headerActions}>
+          <div className={styles.dateSelector}>May 01 - May 31</div>
+          <button className={styles.exportBtn}>Export report</button>
         </div>
-      </main>
+      </header>
+
+      <div className={styles.statsGrid}>
+        {stats.map((stat, i) => (
+          <StatCard key={i} title={stat.title} value={stat.value} subtitle={stat.subtitle} icon={stat.icon} variant={stat.variant as any} />
+        ))}
+      </div>
+
+      <div className={styles.bentoGrid}>
+        {/* Pulse / Circular Chart Widget */}
+        <div className={`${styles.widget} ${styles.pulseWidget}`}>
+          <div className={styles.widgetHeader}>
+            <h3 className={styles.widgetTitle}>Rental Pulse</h3>
+            <span className={styles.dotMenu}>...</span>
+          </div>
+          <div className={styles.pulseContainer}>
+            <div className={styles.donutChart}>
+              <div className={styles.donutInner}>
+                <span className={styles.donutValue}>98</span>
+                <span className={styles.donutLabel}>active</span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.pulseLegend}>
+            <div className={styles.legendItem}><span className={styles.dot} style={{backgroundColor: 'var(--primary)'}}></span> Active</div>
+            <div className={styles.legendItem}><span className={styles.dot} style={{backgroundColor: '#D1E68C'}}></span> Completed</div>
+            <div className={styles.legendItem}><span className={styles.dot} style={{backgroundColor: 'var(--background)'}}></span> Cancelled</div>
+          </div>
+        </div>
+
+        {/* Tasks List Widget */}
+        <div className={`${styles.widget} ${styles.tasksWidget}`}>
+          <div className={styles.widgetHeader}>
+            <h3 className={styles.widgetTitle}>Pending Actions</h3>
+            <button className={styles.textBtn}>See All {'>'}</button>
+          </div>
+          <div className={styles.taskList}>
+            {tasks.map((task, i) => (
+              <div key={i} className={styles.taskItem}>
+                <div className={`${styles.taskDot} ${styles[task.status]}`}></div>
+                <div className={styles.taskInfo}>
+                  <p className={styles.taskTitle}>{task.title}</p>
+                  <p className={styles.taskSubtitle}>{task.subtitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.priorityBox}>
+            <span className={styles.priorityBadge}>Urgent Review</span>
+            <p className={styles.priorityTitle}>Dispute Escallation</p>
+            <p className={styles.prioritySubtitle}>Renter vs Owner Dispute TRX-9884</p>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: '68%' }}></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Large Performance Chart Widget */}
+        <div className={`${styles.widget} ${styles.chartWidget}`}>
+          <div className={styles.widgetHeader}>
+            <div>
+              <h3 className={styles.widgetTitle}>Transaction Snapshot</h3>
+              <p className={styles.widgetSubtitle}>Rentals completed this week</p>
+            </div>
+            <div className={styles.chartTabs}>
+              <span className={styles.activeTab}>Weekly</span>
+              <span>Monthly</span>
+              <span>Annually</span>
+            </div>
+          </div>
+          <div className={styles.chartArea}>
+            <div className={styles.chartLine}></div>
+            <div className={styles.chartPoint}>
+              <div className={styles.tooltip}>22 rentals<br/><span>Thursday</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity / Users Widget */}
+        <div className={`${styles.widget} ${styles.activityWidget}`}>
+          <div className={styles.widgetHeader}>
+            <div>
+              <h3 className={styles.widgetTitle}>Recent Users</h3>
+              <p className={styles.widgetSubtitle}>4 active</p>
+            </div>
+            <button className={styles.textBtn}>All Users {'>'}</button>
+          </div>
+          <div className={styles.userGrid}>
+            <div className={styles.userCard}>
+              <div className={styles.userAvatar}>BS</div>
+              <div className={styles.userInfo}>
+                <p className={styles.userName}>Budi Santoso</p>
+                <p className={styles.userRole}>Renter</p>
+              </div>
+              <div className={styles.userScore}>74%</div>
+            </div>
+            <div className={styles.userCard}>
+              <div className={styles.userAvatar} style={{backgroundColor: 'var(--primary-light)'}}>SA</div>
+              <div className={styles.userInfo}>
+                <p className={styles.userName}>Siti Aminah</p>
+                <p className={styles.userRole}>Owner</p>
+              </div>
+              <div className={styles.userScore}>92%</div>
+            </div>
+            <div className={styles.userCard}>
+              <div className={styles.userAvatar} style={{backgroundColor: '#D1E68C', color: '#000'}}>AR</div>
+              <div className={styles.userInfo}>
+                <p className={styles.userName}>Ahmad Rizal</p>
+                <p className={styles.userRole}>Renter</p>
+              </div>
+              <div className={styles.userScore}>60%</div>
+            </div>
+            <div className={styles.userCard}>
+              <div className={styles.userAvatar} style={{backgroundColor: 'var(--accent-gold)'}}>DL</div>
+              <div className={styles.userInfo}>
+                <p className={styles.userName}>Dewi Lestari</p>
+                <p className={styles.userRole}>Owner</p>
+              </div>
+              <div className={styles.userScore}>88%</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

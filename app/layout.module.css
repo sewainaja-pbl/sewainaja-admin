@@ -1,0 +1,16 @@
+.container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.contentWrapper {
+  flex: 1;
+  margin-left: 120px; /* 80px sidebar + 20px gap + 20px padding */
+  padding: 0 40px 40px 0; /* Padding around the main area */
+  display: flex;
+  flex-direction: column;
+}
+
+.mainContent {
+  flex: 1;
+}

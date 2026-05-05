@@ -1,43 +1,72 @@
-@import "tailwindcss";
-
 :root {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --primary: 263.4 70% 50.4%;
-  --primary-foreground: 210 20% 98%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --radius: 0.75rem;
+  --primary: #012D1D;
+  --primary-light: #1A3C2E;
+  --primary-hover: #02452C;
+  --accent-gold: #7B5804;
+  --accent-green-pale: #E8F0EB;
+  --background: #F4F6F5; /* A slightly cooler off-white for the floating app feel */
+  --surface: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #A0A0A0;
+  
+  --status-active: #F59E0B;
+  --status-success: #10B981;
+  --status-error: #EF4444;
+  --status-pending: #E0E0E0;
+  
+  --border-color: #EBEBEB;
+  
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 99px;
+  
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
 body {
-  background: radial-gradient(circle at top right, hsl(263.4 70% 20%), transparent),
-              radial-gradient(circle at bottom left, hsl(240 10% 5%), hsl(240 10% 2%));
-  background-attachment: fixed;
-  color: hsl(var(--foreground));
-  font-family: 'Outfit', 'Inter', sans-serif;
-  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--text-primary);
   margin: 0;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius);
+* {
+  box-sizing: border-box;
 }
 
-.title-gradient {
-  background: linear-gradient(to right, #fff, #a855f7);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D1D1;
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
