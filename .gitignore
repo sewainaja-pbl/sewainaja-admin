@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!**/.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.env
+.env.local
+.env.production
+.firebase/
+
+/functions/node_modules/
+/functions/lib/
+/functions/coverage/
+/functions/.firebase/
+/functions/.env.local
+/functions/.env.*.local
+
+.agents
+.claude
+.continue/*
+.trae
+.windsurf
+
+.firebase-debug.log
+.firestore-debug.log
+database-debug.log
+firebase-debug.log
