@@ -10,7 +10,9 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:admin": "npx ts-node scripts/seed-admin.ts",
+    "seed:admin:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-admin.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -20,10 +22,12 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/supertest": "^6.0.2",
     "@types/node": "^20.17.0",
+    "@types/supertest": "^6.0.2",
+    "cross-env": "^10.1.0",
     "eslint": "^8.57.1",
     "supertest": "^7.1.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^2.1.8"
   }
