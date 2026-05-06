@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import styles from './Sidebar.module.css';
+import { LayoutGrid, Users, MessageSquareWarning, Settings, LogOut } from 'lucide-react';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -15,75 +16,57 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className={styles.sidebarWrapper}>
+    <aside className="fixed left-6 top-5 z-[100] flex flex-col justify-between items-start w-[72px] h-[calc(100vh-40px)] overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[180px] group">
       {/* Top Navigation Pill */}
-      <nav className={styles.navContainer}>
+      <nav className="bg-surface rounded-[36px] p-2.5 flex flex-col gap-2 shadow-[var(--shadow-soft)] w-full">
+        <div className="flex items-center justify-center pt-2 pb-2 mb-2">
+          <Image src="/logo.svg" alt="SewainAja Logo" width={32} height={32} className="object-contain shrink-0" />
+        </div>
         <Link 
           href="/" 
-          className={`${styles.navItem} ${isActive('/') ? styles.active : ''}`} 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Dashboard"
         >
-          <div className={styles.navIconWrapper}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
+          <div className="flex items-center justify-center shrink-0">
+            <LayoutGrid size={22} strokeWidth={2} />
           </div>
-          <span className={styles.navLabel}>Dashboard</span>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Dashboard</span>
         </Link>
         <Link 
           href="/users" 
-          className={`${styles.navItem} ${isActive('/users') ? styles.active : ''}`} 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/users') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Users"
         >
-          <div className={styles.navIconWrapper}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
+          <div className="flex items-center justify-center shrink-0">
+            <Users size={22} strokeWidth={2} />
           </div>
-          <span className={styles.navLabel}>Users</span>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Users</span>
         </Link>
         <Link 
           href="/disputes" 
-          className={`${styles.navItem} ${isActive('/disputes') ? styles.active : ''}`} 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/disputes') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Disputes"
         >
-          <div className={styles.navIconWrapper}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
+          <div className="flex items-center justify-center shrink-0">
+            <MessageSquareWarning size={22} strokeWidth={2} />
           </div>
-          <span className={styles.navLabel}>Disputes</span>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Disputes</span>
         </Link>
       </nav>
 
       {/* Bottom Action Buttons */}
-      <div className={styles.bottomActions}>
-        <button className={styles.actionBtn} title="Settings">
-          <div className={styles.navIconWrapper}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
+      <div className="flex flex-col gap-4 w-full">
+        <button className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" title="Settings">
+          <div className="flex items-center justify-center shrink-0">
+            <Settings size={20} strokeWidth={2} />
           </div>
-          <span className={styles.navLabel}>Settings</span>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Settings</span>
         </button>
-        <button className={styles.actionBtn} title="Logout">
-          <div className={styles.navIconWrapper}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
+        <button className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" title="Logout">
+          <div className="flex items-center justify-center shrink-0">
+            <LogOut size={20} strokeWidth={2} />
           </div>
-          <span className={styles.navLabel}>Logout</span>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Logout</span>
         </button>
       </div>
     </aside>

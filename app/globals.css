@@ -1,21 +1,23 @@
-:root {
-  --primary: #012D1D;
-  --primary-light: #1A3C2E;
-  --primary-hover: #02452C;
-  --accent-gold: #7B5804;
-  --accent-green-pale: #E8F0EB;
-  --background: #F4F6F5; /* A slightly cooler off-white for the floating app feel */
-  --surface: #FFFFFF;
-  --text-primary: #1A1A1A;
-  --text-secondary: #6B6B6B;
-  --text-tertiary: #A0A0A0;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #012D1D;
+  --color-primary-light: #1A3C2E;
+  --color-primary-hover: #02452C;
+  --color-accent-gold: #7B5804;
+  --color-accent-green-pale: #E8F0EB;
+  --color-background: #F4F6F5; /* A slightly cooler off-white for the floating app feel */
+  --color-surface: #FFFFFF;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #6B6B6B;
+  --color-text-tertiary: #A0A0A0;
   
-  --status-active: #F59E0B;
-  --status-success: #10B981;
-  --status-error: #EF4444;
-  --status-pending: #E0E0E0;
+  --color-status-active: #F59E0B;
+  --color-status-success: #10B981;
+  --color-status-error: #EF4444;
+  --color-status-pending: #E0E0E0;
   
-  --border-color: #EBEBEB;
+  --color-border-color: #EBEBEB;
   
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -23,6 +25,31 @@
   --radius-xl: 32px;
   --radius-pill: 99px;
   
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+:root {
+  --primary: #012D1D;
+  --primary-light: #1A3C2E;
+  --primary-hover: #02452C;
+  --accent-gold: #7B5804;
+  --accent-green-pale: #E8F0EB;
+  --background: #F4F6F5;
+  --surface: #FFFFFF;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #A0A0A0;
+  --status-active: #F59E0B;
+  --status-success: #10B981;
+  --status-error: #EF4444;
+  --status-pending: #E0E0E0;
+  --border-color: #EBEBEB;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 99px;
   --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
