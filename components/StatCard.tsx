@@ -1,21 +1,22 @@
+import { ElementType } from 'react';
 import styles from './StatCard.module.css';
 
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon?: string;
+  icon?: ElementType;
   variant?: 'default' | 'dark';
 }
 
-const StatCard = ({ title, value, subtitle, icon, variant = 'default' }: StatCardProps) => {
+const StatCard = ({ title, value, subtitle, icon: Icon, variant = 'default' }: StatCardProps) => {
   return (
     <div className={`${styles.card} ${styles[variant]}`}>
       <div className={styles.header}>
         <h3 className={styles.title}>{title}</h3>
-        {icon && (
+        {Icon && (
           <span className={styles.iconWrapper}>
-            <span className={styles.icon}>{icon}</span>
+            <Icon size={20} className={styles.icon} />
           </span>
         )}
       </div>
