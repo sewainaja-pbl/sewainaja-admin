@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import { AuthProvider } from '@/components/AuthProvider';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -23,15 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} ${poppins.className}`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="flex-1 ml-[120px] pr-10 pb-10 flex flex-col">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-          </div>
-        </div>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
