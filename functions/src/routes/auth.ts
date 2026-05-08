@@ -167,3 +167,105 @@ authRouter.get(
     return ok(res, snapshot.data(), 'Profil ditemukan');
   }),
 );
+
+authRouter.post(
+  '/upload-kyc',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const selfiePhotoUrl = typeof req.body?.selfiePhotoUrl === 'string' ? req.body.selfiePhotoUrl.trim() : '';
+
+    if (!selfiePhotoUrl) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Foto selfie wajib diunggah', 400);
+    }
+
+    const uid = req.user?.uid;
+    const ref = db.collection('users').doc(uid ?? '');
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) {
+      return fail(res, ERROR_CODES.NOT_FOUND, 'Profil user tidak ditemukan', 404);
+    }
+
+    await ref.update({
+      selfiePhotoUrl,
+      status: 'pending',
+      updatedAt: now(),
+    });
+
+    return ok(res, { selfiePhotoUrl, status: 'pending' }, 'Foto selfie berhasil diunggah');
+  }),
+);
+
+authRouter.patch(
+  '/profile',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const uid = req.user?.uid;
+    const ref = db.collection('users').doc(uid ?? '');
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) {
+      return fail(res, ERROR_CODES.NOT_FOUND, 'Profil user tidak ditemukan', 404);
+    }
+
+    const updates: Record<string, unknown> = {
+      updatedAt: now(),
+    };
+
+    if (typeof req.body.name === 'string') {
+      const name = req.body.name.trim();
+      if (!name) {
+        return fail(res, ERROR_CODES.INVALID_INPUT, 'Nama tidak boleh kosong', 400);
+      }
+      updates.name = name;
+    }
+
+    if (typeof req.body.phone === 'string') {
+      const phone = req.body.phone.trim();
+      if (!phone) {
+        return fail(res, ERROR_CODES.INVALID_INPUT, 'Nomor telepon tidak boleh kosong', 400);
+      }
+      updates.phone = phone;
+    }
+
+    if (req.body.isOwner !== undefined) {
+      updates.isOwner = toBoolean(req.body.isOwner);
+    }
+
+    if (req.body.isRenter !== undefined) {
+      updates.isRenter = toBoolean(req.body.isRenter);
+    }
+
+    await ref.update(updates);
+
+    const updatedSnapshot = await ref.get();
+    return ok(res, updatedSnapshot.data(), 'Profil berhasil diperbarui');
+  }),
+);
+
+authRouter.post(
+  '/fcm-token',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const fcmToken = typeof req.body?.fcmToken === 'string' ? req.body.fcmToken.trim() : '';
+
+    if (!fcmToken) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Token FCM tidak valid', 400);
+    }
+
+    const uid = req.user?.uid;
+    const ref = db.collection('users').doc(uid ?? '');
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) {
+      return fail(res, ERROR_CODES.NOT_FOUND, 'Profil user tidak ditemukan', 404);
+    }
+
+    await ref.update({
+      fcmToken,
+      updatedAt: now(),
+    });
+
+    return ok(res, { fcmToken }, 'Token FCM berhasil diperbarui');
+  }),
+);

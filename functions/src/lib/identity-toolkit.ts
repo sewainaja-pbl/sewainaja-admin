@@ -1,5 +1,10 @@
-const IDENTITY_TOOLKIT_BASE_URL =
-  'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword';
+const getIdentityToolkitUrl = () => {
+  const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+  if (emulatorHost) {
+    return `http://${emulatorHost}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword`;
+  }
+  return 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword';
+};
 
 export interface SignInResult {
   idToken: string;
@@ -28,7 +33,8 @@ export const signInWithPassword = async (
     );
   }
 
-  const response = await fetch(`${IDENTITY_TOOLKIT_BASE_URL}?key=${apiKey}`, {
+  const url = getIdentityToolkitUrl();
+  const response = await fetch(`${url}?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

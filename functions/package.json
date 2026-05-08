@@ -12,7 +12,9 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "seed:admin": "npx ts-node scripts/seed-admin.ts",
-    "seed:admin:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-admin.ts"
+    "seed:admin:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-admin.ts",
+    "seed:users": "npx ts-node scripts/seed-users.ts",
+    "seed:users:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-users.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
