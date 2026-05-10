@@ -28,7 +28,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="fixed left-6 top-5 z-[100] flex flex-col justify-between items-start w-[72px] h-[calc(100vh-40px)] overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[180px] group">
+    <aside className="fixed left-6 top-5 z-[100] hidden lg:flex flex-col justify-between items-start w-[72px] h-[calc(100vh-40px)] overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:w-[180px] group">
       {/* Top Navigation Pill */}
       <nav className="bg-surface rounded-[36px] p-2.5 flex flex-col gap-2 shadow-[var(--shadow-soft)] w-full">
         <div className="flex items-center justify-center pt-2 pb-2 mb-2">

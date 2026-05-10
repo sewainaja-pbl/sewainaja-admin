@@ -72,12 +72,7 @@ a {
   color: inherit;
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-}
+
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
