@@ -44,6 +44,8 @@ async function seedAdmin() {
     console.log(`⚠️  Email ${ADMIN_EMAIL} sudah terdaftar (uid: ${existing.uid}).`);
     console.log('   Memperbarui dokumen Firestore-nya menjadi admin...\n');
 
+    await auth.setCustomUserClaims(existing.uid, { admin: true });
+    
     await db.collection('users').doc(existing.uid).set(
       {
         isAdmin: true,
@@ -53,7 +55,7 @@ async function seedAdmin() {
       { merge: true },
     );
 
-    console.log('✅ Dokumen Firestore diperbarui! User sekarang adalah admin.');
+    console.log('✅ Dokumen Firestore & Custom Claims diperbarui! User sekarang adalah admin.');
     return;
   }
 
@@ -67,7 +69,11 @@ async function seedAdmin() {
 
   console.log(`✔  User Auth berhasil dibuat (uid: ${userRecord.uid})`);
 
-  // 3. Buat dokumen profil di Firestore dengan isAdmin: true
+  // 3. Set Custom Claims (untuk Security Rules)
+  await auth.setCustomUserClaims(userRecord.uid, { admin: true });
+  console.log('✔  Custom claims (admin: true) berhasil disematkan');
+
+  // 4. Buat dokumen profil di Firestore dengan isAdmin: true
   await db.collection('users').doc(userRecord.uid).set({
     id: userRecord.uid,
     name: ADMIN_NAME,
