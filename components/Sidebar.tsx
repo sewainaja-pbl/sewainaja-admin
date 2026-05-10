@@ -2,17 +2,29 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutGrid, Users, MessageSquareWarning, Settings, LogOut } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Helper to check if the path is active
   const isActive = (path: string) => {
-    if (path === '/' && pathname === '/') return true;
-    if (path !== '/' && pathname.startsWith(path)) return true;
+    if (path === '/dashboard' && pathname === '/dashboard') return true;
+    if (path !== '/dashboard' && pathname.startsWith(path)) return true;
     return false;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
@@ -23,8 +35,8 @@ const Sidebar = () => {
           <Image src="/logo.svg" alt="SewainAja Logo" width={32} height={32} className="object-contain shrink-0" />
         </div>
         <Link 
-          href="/" 
-          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
+          href="/dashboard" 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Dashboard"
         >
           <div className="flex items-center justify-center shrink-0">
@@ -33,8 +45,8 @@ const Sidebar = () => {
           <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Dashboard</span>
         </Link>
         <Link 
-          href="/users" 
-          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/users') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
+          href="/dashboard/users" 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard/users') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Users"
         >
           <div className="flex items-center justify-center shrink-0">
@@ -43,8 +55,8 @@ const Sidebar = () => {
           <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Users</span>
         </Link>
         <Link 
-          href="/disputes" 
-          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/disputes') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
+          href="/dashboard/disputes" 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard/disputes') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Disputes"
         >
           <div className="flex items-center justify-center shrink-0">
@@ -62,7 +74,11 @@ const Sidebar = () => {
           </div>
           <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Settings</span>
         </button>
-        <button className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" title="Logout">
+        <button 
+          onClick={handleLogout}
+          className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-status-error hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
+          title="Logout"
+        >
           <div className="flex items-center justify-center shrink-0">
             <LogOut size={20} strokeWidth={2} />
           </div>

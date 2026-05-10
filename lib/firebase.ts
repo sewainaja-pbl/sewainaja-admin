@@ -1,5 +1,6 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,8 +14,17 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// Using getApps().length to prevent re-initialization during Hot Module Replacement (HMR)
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+
+// Connect to Auth Emulator if in development
+if (process.env.NODE_ENV === 'development') {
+  // Check if we already connected to emulator to avoid multiple connections during HMR
+  if (!(auth as any)._emulatorConfig) {
+    connectAuthEmulator(auth, 'http://127.0.0.1:9001');
+    console.log('🔧 Connected to Firebase Auth Emulator');
+  }
+}
 
 // Initialize Analytics safely
 let analytics: Analytics | undefined;
@@ -26,5 +36,5 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export { analytics };
+export { analytics, auth };
 export default app;
