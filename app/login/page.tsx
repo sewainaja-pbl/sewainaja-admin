@@ -173,7 +173,8 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading || !email || !password || lockoutTimer > 0}
-              className="mt-4 w-full h-12 bg-primary hover:bg-primary-hover text-white rounded-[var(--radius-md)] text-[14px] font-semibold transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(1,45,29,0.15)] active:scale-[0.98]"
+              className="mt-4 w-full h-12 rounded-[var(--radius-md)] text-[14px] font-semibold transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(1,45,29,0.15)] active:scale-[0.98] hover:brightness-110"
+              style={{ backgroundColor: '#012D1D', color: 'white' }}
             >
               {isLoading ? (
                 <>
