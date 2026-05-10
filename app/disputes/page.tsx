@@ -1,8 +1,18 @@
 import Badge from '@/components/Badge';
 import styles from './page.module.css';
 
+interface Dispute {
+  id: string;
+  trxId: string;
+  reporter: string;
+  against: string;
+  reason: string;
+  date: string;
+  status: 'pending' | 'success' | 'active' | 'error';
+}
+
 export default function Disputes() {
-  const disputes = [
+  const disputes: Dispute[] = [
     { 
       id: 'D-2031', 
       trxId: 'TRX-9902',
@@ -71,7 +81,7 @@ export default function Disputes() {
                 <td className={styles.reasonCol}>{dispute.reason}</td>
                 <td>
                   <Badge 
-                    status={dispute.status as any} 
+                    status={dispute.status} 
                     label={dispute.status === 'success' ? 'Resolved' : 'Open'} 
                   />
                 </td>

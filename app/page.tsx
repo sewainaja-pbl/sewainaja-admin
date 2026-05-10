@@ -1,8 +1,17 @@
+import { ElementType } from 'react';
 import StatCard from '@/components/StatCard';
 import { Users, Clock, AlertTriangle, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight } from 'lucide-react';
 
+interface Stat {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: ElementType;
+  variant: 'default' | 'dark';
+}
+
 export default function Home() {
-  const stats = [
+  const stats: Stat[] = [
     { title: 'Total Users', value: '1,248', subtitle: '+12% this month', icon: Users, variant: 'dark' },
     { title: 'Pending Approvals', value: '23', subtitle: 'Requires attention', icon: Clock, variant: 'default' },
     { title: 'Open Disputes', value: '4', subtitle: '2 overdue', icon: AlertTriangle, variant: 'default' },
@@ -41,7 +50,7 @@ export default function Home() {
 
       <div className="grid grid-cols-4 gap-5">
         {stats.map((stat, i) => (
-          <StatCard key={i} title={stat.title} value={stat.value} subtitle={stat.subtitle} icon={stat.icon} variant={stat.variant as any} />
+          <StatCard key={i} title={stat.title} value={stat.value} subtitle={stat.subtitle} icon={stat.icon} variant={stat.variant} />
         ))}
       </div>
 

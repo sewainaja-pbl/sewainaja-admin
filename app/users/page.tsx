@@ -1,8 +1,16 @@
 import Badge from '@/components/Badge';
 import styles from './page.module.css';
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: 'pending' | 'active' | 'error' | 'success';
+}
+
 export default function Users() {
-  const users = [
+  const users: User[] = [
     { id: 'U-1001', name: 'Budi Santoso', email: 'budi@example.com', role: 'Renter', status: 'pending' },
     { id: 'U-1002', name: 'Siti Aminah', email: 'siti@example.com', role: 'Owner', status: 'pending' },
     { id: 'U-1003', name: 'Ahmad Rizal', email: 'ahmad@example.com', role: 'Renter', status: 'active' },
@@ -50,7 +58,7 @@ export default function Users() {
                 <td>{user.role}</td>
                 <td>
                   <Badge 
-                    status={user.status as any} 
+                    status={user.status} 
                     label={user.status === 'error' ? 'Rejected' : user.status === 'active' ? 'Approved' : 'Pending Review'} 
                   />
                 </td>
