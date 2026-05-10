@@ -98,21 +98,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Brand Logo/Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-[var(--shadow-hover)] mb-4">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-[var(--shadow-hover)] mb-4 transition-transform hover:scale-105">
             <span className="text-white text-2xl font-bold font-serif">S</span>
           </div>
-          <h1 className="text-[28px] font-bold text-text-primary text-center">SewainAja Admin</h1>
-          <p className="text-text-secondary text-[14px] mt-2 text-center">
+          <h1 className="text-[24px] sm:text-[28px] font-bold text-text-primary text-center">SewainAja Admin</h1>
+          <p className="text-text-secondary text-[13px] sm:text-[14px] mt-2 text-center">
             Sign in to access the control panel
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-surface p-8 rounded-[var(--radius-xl)] shadow-[var(--shadow-soft)] border border-border-color">
+        <div className="bg-surface p-6 sm:p-8 rounded-[var(--radius-lg)] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-soft)] border border-border-color">
           {error && (
             <div className="mb-6 p-4 bg-status-error/10 border border-status-error/20 rounded-[var(--radius-md)] flex items-start gap-3">
               <AlertCircle size={20} className="text-status-error shrink-0 mt-0.5" />
@@ -173,7 +173,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading || !email || !password || lockoutTimer > 0}
-              className="mt-4 w-full h-12 bg-primary hover:bg-primary-hover text-white rounded-[var(--radius-md)] text-[14px] font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(1,45,29,0.15)]"
+              className="mt-4 w-full h-12 bg-primary hover:bg-primary-hover text-white rounded-[var(--radius-md)] text-[14px] font-semibold transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(1,45,29,0.15)] active:scale-[0.98]"
             >
               {isLoading ? (
                 <>
