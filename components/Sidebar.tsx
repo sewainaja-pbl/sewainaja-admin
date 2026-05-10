@@ -68,21 +68,27 @@ const Sidebar = () => {
 
       {/* Bottom Action Buttons */}
       <div className="flex flex-col gap-4 w-full">
-        <button className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" title="Settings">
-          <div className="flex items-center justify-center shrink-0">
+        <button 
+          className="w-full h-[56px] rounded-[28px] text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
+          title="Settings"
+          style={{ backgroundColor: '#FFFFFF' }}
+        >
+          <div className="min-w-[24px] flex justify-center">
             <Settings size={20} strokeWidth={2} />
           </div>
-          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Settings</span>
+          <span className="ml-4 font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">Settings</span>
         </button>
+
         <button 
           onClick={handleLogout}
-          className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-status-error hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
+          className="w-full h-[56px] rounded-[28px] text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-status-error hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
           title="Logout"
+          style={{ backgroundColor: '#FFFFFF' }}
         >
-          <div className="flex items-center justify-center shrink-0">
+          <div className="min-w-[24px] flex justify-center">
             <LogOut size={20} strokeWidth={2} />
           </div>
-          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Logout</span>
+          <span className="ml-4 font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">Logout</span>
         </button>
       </div>
     </aside>
