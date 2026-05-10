@@ -6,6 +6,12 @@ import { fail } from './lib/http';
 import { authRouter } from './routes/auth';
 import { healthRouter } from './routes/health';
 import { adminUsersRouter } from './routes/admin-users';
+import { addressesRouter } from './routes/addresses';
+import { categoriesRouter } from './routes/categories';
+import { itemsRouter } from './routes/items';
+import { gpsRouter } from './routes/gps';
+import { notificationsRouter } from './routes/notifications';
+import { adminDisputesRouter } from './routes/admin-disputes';
 
 export const app = express();
 
@@ -15,6 +21,12 @@ app.use(express.json());
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 app.use('/admin/users', adminUsersRouter);
+app.use('/admin/disputes', adminDisputesRouter);
+app.use('/addresses', addressesRouter);
+app.use('/categories', categoriesRouter);
+app.use('/items', itemsRouter);
+app.use('/gps', gpsRouter);
+app.use('/notifications', notificationsRouter);
 
 app.use((_req, res) => {
   return fail(res, ERROR_CODES.NOT_FOUND, 'Route tidak ditemukan', 404);
