@@ -27,6 +27,7 @@
     "express": "^4.21.2",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.1.0",
+    "midtrans-client": "^1.4.3",
     "ngeohash": "^0.6.3"
   },
   "devDependencies": {

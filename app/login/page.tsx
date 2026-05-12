@@ -62,10 +62,11 @@ export default function LoginPage() {
       // Success: Reset failed attempts
       setFailedAttempts(0);
       // If admin, routing is handled by useEffect via useAuth changes
-    } catch (err: any) {
+    } catch (e: unknown) {
+      const err = e as Error & { code?: string };
       console.error('Login error:', err);
       
-      if (err.message.includes('Unauthorized access')) {
+      if (err.message && err.message.includes('Unauthorized access')) {
         setError(err.message);
       } else if (err.code === 'auth/too-many-requests') {
         setError('Too many failed attempts. Access temporarily blocked for security.');

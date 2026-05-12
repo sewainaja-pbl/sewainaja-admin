@@ -46,7 +46,7 @@ const Sidebar = () => {
         </Link>
         <Link 
           href="/dashboard/users" 
-          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard/users') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard/users') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
           title="Users"
         >
           <div className="flex items-center justify-center shrink-0">

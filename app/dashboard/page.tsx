@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
+import Link from 'next/link';
 import { Users, Clock, AlertTriangle, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight, Loader2 } from 'lucide-react';
 import { db } from '@/lib/firestore';
 import { collection, doc, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 
+interface DashboardTask { id: string; title?: string; type?: string; createdAt?: { seconds: number }; priority?: string; status?: string; description?: string; refId?: string; }
+interface DashboardUser { id: string; name: string; isOwner?: boolean; status?: string; }
+interface TrafficLog { id: string; date: string; activeUsers: number; }
+
 export default function Home() {
-  const [statsData, setStatsData] = useState<any>({
+  const [statsData, setStatsData] = useState<Record<string, number>>({
     totalUsers: 0,
     totalPendingApprovals: 0,
     totalOpenDisputes: 0,
@@ -17,9 +22,9 @@ export default function Home() {
     totalTransactionsCompleted: 0,
     totalTransactionsCancelled: 0,
   });
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [recentUsers, setRecentUsers] = useState<any[]>([]);
-  const [trafficLogs, setTrafficLogs] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<DashboardTask[]>([]);
+  const [recentUsers, setRecentUsers] = useState<DashboardUser[]>([]);
+  const [trafficLogs, setTrafficLogs] = useState<TrafficLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,23 +34,23 @@ export default function Home() {
         // 1. Fetch App Stats
         const statsSnap = await getDoc(doc(db, 'app_stats', 'global'));
         if (statsSnap.exists()) {
-          setStatsData((prev: any) => ({ ...prev, ...statsSnap.data() }));
+          setStatsData((prev: Record<string, number>) => ({ ...prev, ...(statsSnap.data() as Record<string, number>) }));
         }
 
         // 2. Fetch Pending Actions
         const tasksQuery = query(collection(db, 'admin_tasks'), orderBy('createdAt', 'desc'), limit(5));
         const tasksSnap = await getDocs(tasksQuery);
-        setTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardTask)));
 
         // 3. Fetch Recent Users
         const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(4));
         const usersSnap = await getDocs(usersQuery);
-        setRecentUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setRecentUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardUser)));
 
         // 4. Fetch Traffic Logs
         const trafficQuery = query(collection(db, 'user_activity_logs'), orderBy('date', 'desc'), limit(7));
         const trafficSnap = await getDocs(trafficQuery);
-        setTrafficLogs(trafficSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setTrafficLogs(trafficSnap.docs.map(d => ({ id: d.id, ...d.data() } as TrafficLog)));
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -97,8 +102,6 @@ export default function Home() {
 
   // Traffic Stats
   const totalVisitors = trafficLogs.reduce((acc, log) => acc + (log.activeUsers || 0), 0);
-  const latestTrafficDay = trafficLogs.length > 0 ? new Date(trafficLogs[0].date).toLocaleDateString('en-US', { weekday: 'long' }) : 'Today';
-  const latestVisitors = trafficLogs.length > 0 ? trafficLogs[0].activeUsers : 0;
 
   // Separate Urgent Task
   const urgentTask = tasks.find(t => t.priority === 'urgent' || t.status === 'error');
@@ -127,7 +130,7 @@ export default function Home() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat, i) => (
-          <StatCard key={i} title={stat.title} value={stat.value} subtitle={stat.subtitle} icon={stat.icon} variant={stat.variant as any} />
+          <StatCard key={i} title={stat.title} value={stat.value} subtitle={stat.subtitle} icon={stat.icon} variant={stat.variant as "default" | "dark"} />
         ))}
       </div>
 
@@ -157,12 +160,12 @@ export default function Home() {
         <div className="col-span-1 md:col-span-6 lg:col-span-4 bg-surface rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-soft)] flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-[16px] font-semibold text-text-primary m-0">Pending Actions</h3>
-            <button className="text-[12px] font-medium text-text-secondary flex items-center gap-1">See All <ChevronRight size={14} /></button>
+            <Link href="/dashboard/users" className="text-[12px] font-medium text-text-secondary flex items-center gap-1 hover:text-primary transition-colors">See All <ChevronRight size={14} /></Link>
           </div>
           <div className="flex flex-col gap-4 mb-6">
-            {normalTasks.length > 0 ? normalTasks.map((task, i) => (
+            {normalTasks.length > 0 ? normalTasks.map((task) => (
               <div key={task.id} className="flex items-start gap-3">
-                <div className={`w-2 h-2 rounded-full mt-1.5 ${getTaskStatusClass(task.priority || task.status)}`}></div>
+                <div className={`w-2 h-2 rounded-full mt-1.5 ${getTaskStatusClass(task.priority || task.status || '')}`}></div>
                 <div className="flex-1">
                   <p className="text-[13px] font-medium text-text-primary m-0 mb-1">{task.title}</p>
                   <p className="text-[11px] text-text-tertiary m-0">
@@ -293,7 +296,7 @@ export default function Home() {
               <h3 className="text-[16px] font-semibold text-text-primary m-0">Recent Users</h3>
               <p className="text-[12px] text-text-tertiary mt-1 mb-0">{recentUsers.length} newest signups</p>
             </div>
-            <button className="text-[12px] font-medium text-text-secondary flex items-center gap-1">All Users <ChevronRight size={14} /></button>
+            <Link href="/dashboard/users" className="text-[12px] font-medium text-text-secondary flex items-center gap-1 hover:text-primary transition-colors">All Users <ChevronRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {recentUsers.length > 0 ? recentUsers.map((user, i) => (
