@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     await adminAuth.setCustomUserClaims(userId, { [role]: true, verified: true });
     
     // Update status di Firestore
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status: 'verified',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
       success: true, 
       message: `User ${userId} berhasil di-approve sebagai ${role}` 
     });
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err as Error & { code?: string };
     console.error('[API Error] approve-user:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: error.message } },

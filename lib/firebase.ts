@@ -20,7 +20,7 @@ const auth = getAuth(app);
 // Connect to Auth Emulator if in development
 if (process.env.NODE_ENV === 'development') {
   // Check if we already connected to emulator to avoid multiple connections during HMR
-  if (!(auth as any)._emulatorConfig) {
+  if (!(auth as unknown as { _emulatorConfig?: boolean })._emulatorConfig) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9001');
     console.log('🔧 Connected to Firebase Auth Emulator');
   }
