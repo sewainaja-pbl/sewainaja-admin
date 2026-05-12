@@ -69,9 +69,8 @@ const Sidebar = () => {
       {/* Bottom Action Buttons */}
       <div className="flex flex-col gap-4 w-full">
         <button 
-          className="w-full h-[56px] rounded-[28px] text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
+          className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-soft transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-primary hover:shadow-hover hover:-translate-y-0.5 border border-border-color/30" 
           title="Settings"
-          style={{ backgroundColor: '#FFFFFF' }}
         >
           <div className="min-w-[24px] flex justify-center">
             <Settings size={20} strokeWidth={2} />
@@ -81,9 +80,8 @@ const Sidebar = () => {
 
         <button 
           onClick={handleLogout}
-          className="w-full h-[56px] rounded-[28px] text-text-tertiary flex items-center justify-start px-6 shadow-[var(--shadow-soft)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-status-error hover:shadow-[var(--shadow-hover)] hover:-translate-y-0.5" 
+          className="w-full h-[56px] rounded-[28px] bg-surface text-text-tertiary flex items-center justify-start px-6 shadow-soft transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap hover:text-status-error hover:shadow-hover hover:-translate-y-0.5 border border-border-color/30" 
           title="Logout"
-          style={{ backgroundColor: '#FFFFFF' }}
         >
           <div className="min-w-[24px] flex justify-center">
             <LogOut size={20} strokeWidth={2} />

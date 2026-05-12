@@ -120,8 +120,7 @@ export default function Home() {
             <ChevronDown size={14} />
           </div>
           <button 
-            className="px-5 py-2.5 rounded-full text-[13px] font-medium shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:brightness-110 transition-all"
-            style={{ backgroundColor: '#012D1D', color: 'white' }}
+            className="px-5 py-2.5 rounded-full text-[13px] font-medium bg-primary text-white shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:shadow-[0_6px_16px_rgba(1,45,29,0.3)] hover:brightness-110 transition-all active:scale-95"
           >
             Export report
           </button>
@@ -136,16 +135,19 @@ export default function Home() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 auto-rows-auto gap-5">
         {/* Pulse / Circular Chart Widget */}
-        <div className="col-span-1 md:col-span-6 lg:col-span-3 bg-surface rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-soft)] flex flex-col">
+        <div className="col-span-1 md:col-span-6 lg:col-span-3 bg-surface rounded-lg p-6 shadow-soft hover:shadow-hover transition-all duration-300 border border-border-color/50 flex flex-col group/card">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-[16px] font-semibold text-text-primary m-0">Rental Pulse</h3>
-            <MoreHorizontal size={20} className="text-text-tertiary cursor-pointer" />
+            <div className="p-1.5 hover:bg-background rounded-full transition-colors cursor-pointer">
+              <MoreHorizontal size={18} className="text-text-tertiary" />
+            </div>
           </div>
           <div className="flex-1 flex justify-center items-center py-8">
-            <div className="w-[180px] h-[180px] rounded-full flex items-center justify-center transition-all duration-300" style={{ background: pulseGradient }}>
-              <div className="w-[130px] h-[130px] bg-surface rounded-full flex flex-col items-center justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.05)]">
-                <span className="text-[36px] font-bold text-primary leading-none">{statsData.totalTransactionsActive || 0}</span>
-                <span className="text-[12px] text-text-tertiary">active</span>
+            <div className="w-[180px] h-[180px] rounded-full flex items-center justify-center transition-all duration-500 group-hover/card:scale-105" style={{ background: pulseGradient }}>
+              <div className="w-[130px] h-[130px] bg-surface rounded-full flex flex-col items-center justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.05)] relative overflow-hidden">
+                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"></div>
+                <span className="text-[36px] font-bold text-primary leading-none relative z-10">{statsData.totalTransactionsActive || 0}</span>
+                <span className="text-[12px] text-text-tertiary relative z-10 font-medium">active</span>
               </div>
             </div>
           </div>
@@ -157,18 +159,20 @@ export default function Home() {
         </div>
 
         {/* Tasks List Widget */}
-        <div className="col-span-1 md:col-span-6 lg:col-span-4 bg-surface rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-soft)] flex flex-col">
+        <div className="col-span-1 md:col-span-6 lg:col-span-4 bg-surface rounded-lg p-6 shadow-soft hover:shadow-hover transition-all duration-300 border border-border-color/50 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-[16px] font-semibold text-text-primary m-0">Pending Actions</h3>
-            <Link href="/dashboard/users" className="text-[12px] font-medium text-text-secondary flex items-center gap-1 hover:text-primary transition-colors">See All <ChevronRight size={14} /></Link>
+            <Link href="/dashboard/users" className="text-[12px] font-semibold text-primary hover:bg-primary/5 px-3 py-1 rounded-full transition-all flex items-center gap-1 group">
+              See All <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
           <div className="flex flex-col gap-4 mb-6">
             {normalTasks.length > 0 ? normalTasks.map((task) => (
-              <div key={task.id} className="flex items-start gap-3">
-                <div className={`w-2 h-2 rounded-full mt-1.5 ${getTaskStatusClass(task.priority || task.status || '')}`}></div>
+              <div key={task.id} className="flex items-start gap-4 p-2 -mx-2 rounded-xl hover:bg-background/50 transition-colors cursor-pointer group/task">
+                <div className={`w-2 h-2 rounded-full mt-2 transition-transform group-hover/task:scale-125 ${getTaskStatusClass(task.priority || task.status || '')}`}></div>
                 <div className="flex-1">
-                  <p className="text-[13px] font-medium text-text-primary m-0 mb-1">{task.title}</p>
-                  <p className="text-[11px] text-text-tertiary m-0">
+                  <p className="text-[13px] font-semibold text-text-primary m-0 mb-1 group-hover/task:text-primary transition-colors">{task.title}</p>
+                  <p className="text-[11px] text-text-tertiary m-0 font-medium">
                     {task.type?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} 
                     {task.createdAt ? ` • ${new Date(task.createdAt?.seconds * 1000).toLocaleDateString()}` : ''}
                   </p>
@@ -179,12 +183,12 @@ export default function Home() {
             )}
           </div>
           {urgentTask ? (
-            <div className="mt-auto bg-accent-green-pale rounded-[var(--radius-md)] p-4">
-              <span className="inline-block px-2.5 py-1 bg-primary text-white rounded-full text-[10px] font-semibold mb-3">Urgent Review</span>
-              <p className="text-[14px] font-semibold text-primary m-0 mb-1">{urgentTask.title}</p>
-              <p className="text-[11px] text-text-secondary m-0 mb-4">{urgentTask.description} {urgentTask.refId ? `(${urgentTask.refId})` : ''}</p>
-              <div className="h-1 bg-black/5 rounded-sm overflow-hidden">
-                <div className="h-full bg-primary rounded-sm" style={{ width: '68%' }}></div>
+            <div className="mt-auto bg-accent-green-pale/50 border border-primary/10 rounded-xl p-4 transition-transform hover:scale-[1.02] cursor-pointer">
+              <span className="inline-block px-2.5 py-1 bg-primary text-white rounded-full text-[10px] font-bold mb-3 shadow-[0_4px_10px_rgba(1,45,29,0.2)]">Urgent Review</span>
+              <p className="text-[14px] font-bold text-primary m-0 mb-1">{urgentTask.title}</p>
+              <p className="text-[11px] text-text-secondary m-0 mb-4 font-medium">{urgentTask.description} {urgentTask.refId ? `(${urgentTask.refId})` : ''}</p>
+              <div className="h-1.5 bg-primary/10 rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full shadow-[0_0_8px_rgba(1,45,29,0.3)]" style={{ width: '68%' }}></div>
               </div>
             </div>
           ) : (
@@ -195,16 +199,16 @@ export default function Home() {
         </div>
 
         {/* Large Performance Chart Widget */}
-        <div className="col-span-1 md:col-span-12 lg:col-span-5 bg-surface rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-soft)] flex flex-col">
+        <div className="col-span-1 md:col-span-12 lg:col-span-5 bg-surface rounded-lg p-6 shadow-soft hover:shadow-hover transition-all duration-300 border border-border-color/50 flex flex-col">
           <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
             <div>
               <h3 className="text-[16px] font-semibold text-text-primary m-0">Traffic Pengguna</h3>
-              <p className="text-[12px] text-text-tertiary mt-1 mb-0">{(totalVisitors / 1000).toFixed(1)}k active visitors this week</p>
+              <p className="text-[12px] font-medium text-text-tertiary mt-1 mb-0">{(totalVisitors / 1000).toFixed(1)}k active visitors this week</p>
             </div>
-            <div className="flex bg-background p-1 rounded-full">
-              <span className="px-4 py-1.5 text-[11px] font-medium rounded-full cursor-pointer bg-primary text-white">Weekly</span>
-              <span className="px-4 py-1.5 text-[11px] font-medium text-text-secondary rounded-full cursor-pointer hover:bg-white/50">Monthly</span>
-              <span className="px-4 py-1.5 text-[11px] font-medium text-text-secondary rounded-full cursor-pointer hover:bg-white/50">Annually</span>
+            <div className="flex bg-background p-1 rounded-full border border-border-color/50">
+              <span className="px-4 py-1.5 text-[11px] font-bold rounded-full cursor-pointer bg-primary text-white shadow-md transition-all">Weekly</span>
+              <span className="px-4 py-1.5 text-[11px] font-semibold text-text-secondary rounded-full cursor-pointer hover:bg-white/50 transition-all">Monthly</span>
+              <span className="px-4 py-1.5 text-[11px] font-semibold text-text-secondary rounded-full cursor-pointer hover:bg-white/50 transition-all">Annually</span>
             </div>
           </div>
           <div className="flex-1 min-h-[220px] mt-4 relative">
@@ -290,30 +294,32 @@ export default function Home() {
         </div>
 
         {/* Recent Activity / Users Widget */}
-        <div className="col-span-1 md:col-span-12 bg-surface rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-soft)] flex flex-col">
+        <div className="col-span-1 md:col-span-12 bg-surface rounded-lg p-6 shadow-soft hover:shadow-hover transition-all duration-300 border border-border-color/50 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-[16px] font-semibold text-text-primary m-0">Recent Users</h3>
-              <p className="text-[12px] text-text-tertiary mt-1 mb-0">{recentUsers.length} newest signups</p>
+              <p className="text-[12px] font-medium text-text-tertiary mt-1 mb-0">{recentUsers.length} newest signups</p>
             </div>
-            <Link href="/dashboard/users" className="text-[12px] font-medium text-text-secondary flex items-center gap-1 hover:text-primary transition-colors">All Users <ChevronRight size={14} /></Link>
+            <Link href="/dashboard/users" className="text-[12px] font-semibold text-primary hover:bg-primary/5 px-4 py-1.5 rounded-full transition-all flex items-center gap-1 group">
+              All Users <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {recentUsers.length > 0 ? recentUsers.map((user, i) => (
-              <div key={user.id} className="flex items-center p-4 bg-surface border border-border-color rounded-[var(--radius-md)] gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-semibold ${userColors[i % userColors.length]}`}>
+              <div key={user.id} className="flex items-center p-4 bg-background/30 border border-border-color/50 rounded-xl gap-4 hover:bg-surface hover:shadow-md hover:border-primary/10 transition-all cursor-pointer group/user">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[15px] font-bold shadow-inner transition-transform group-hover/user:scale-105 ${userColors[i % userColors.length]}`}>
                   {getInitials(user.name)}
                 </div>
-                <div className="flex-1">
-                  <p className="text-[13px] font-semibold m-0 mb-[2px] truncate w-24" title={user.name}>{user.name}</p>
-                  <p className="text-[11px] text-text-secondary m-0">{user.isOwner ? 'Owner' : 'Renter'}</p>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-[14px] font-bold text-text-primary m-0 mb-[2px] truncate" title={user.name}>{user.name}</p>
+                  <p className="text-[11px] font-medium text-text-tertiary m-0">{user.isOwner ? 'Property Owner' : 'Verified Renter'}</p>
                 </div>
-                <div className="w-9 h-9 rounded-full border-2 border-border-color flex items-center justify-center text-[11px] font-semibold text-text-secondary">
-                  {user.status === 'verified' ? '✓' : '...'}
+                <div className="w-8 h-8 rounded-full bg-surface border border-border-color flex items-center justify-center text-primary shadow-sm group-hover/user:bg-primary group-hover/user:text-white transition-colors">
+                  {user.status === 'verified' ? <ChevronRight size={14} /> : <div className="w-1.5 h-1.5 bg-status-active rounded-full animate-pulse" />}
                 </div>
               </div>
             )) : (
-              <div className="col-span-full py-4 text-center text-text-secondary text-[13px]">No users found.</div>
+              <div className="col-span-full py-10 text-center text-text-secondary text-[14px] font-medium">No users found.</div>
             )}
           </div>
         </div>
