@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Users, Search, CheckCircle2, XCircle, Eye, ShieldAlert, Loader2, Check, X, ExternalLink } from 'lucide-react';
 import { db } from '@/lib/firestore';
 import { collection, getDocs, query, orderBy, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
@@ -34,10 +35,20 @@ interface ApiResponse<T> {
 }
 
 export default function UsersManagement() {
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'pending') {
+      setActiveTab('pending');
+    } else if (tab === 'all') {
+      setActiveTab('all');
+    }
+  }, [searchParams]);
   
   // State for modal / reviewing user
   const [selectedUser, setSelectedUser] = useState<UserDoc | null>(null);

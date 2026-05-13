@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:smoke": "npm run build && npm --prefix functions run test:smoke"
   },
   "dependencies": {
     "firebase": "^12.12.1",
