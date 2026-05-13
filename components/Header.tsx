@@ -295,6 +295,7 @@ const Header = () => {
               <Link href="/dashboard" className={`p-3 rounded-xl transition-colors ${isActive('/dashboard') ? 'bg-background font-medium text-primary' : 'hover:bg-background text-text-tertiary'}`}>Dashboard</Link>
               <Link href="/dashboard/users" className={`p-3 rounded-xl transition-colors ${isActive('/dashboard/users') ? 'bg-background font-medium text-primary' : 'hover:bg-background text-text-tertiary'}`}>Users</Link>
               <Link href="/dashboard/disputes" className={`p-3 rounded-xl transition-colors ${isActive('/dashboard/disputes') ? 'bg-background font-medium text-primary' : 'hover:bg-background text-text-tertiary'}`}>Disputes</Link>
+              <Link href="/dashboard/categories" className={`p-3 rounded-xl transition-colors ${isActive('/dashboard/categories') ? 'bg-background font-medium text-primary' : 'hover:bg-background text-text-tertiary'}`}>Categories</Link>
               <Link href="/dashboard/notifications" className={`p-3 rounded-xl transition-colors ${isActive('/dashboard/notifications') ? 'bg-background font-medium text-primary' : 'hover:bg-background text-text-tertiary'}`}>Notifications</Link>
             </nav>
           </div>

@@ -36,6 +36,10 @@ export async function fetchWithAuth<T = unknown>(
     body = JSON.stringify(body);
   }
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🌐 Fetching: ${API_URL}${endpoint}`);
+  }
+
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     body: body as BodyInit | null | undefined,
