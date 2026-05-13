@@ -5,6 +5,7 @@ import { ERROR_CODES } from '../errors';
 import { requireAuth } from '../middleware/require-auth';
 import { asyncHandler } from '../lib/async-handler';
 import type { DisputeDoc } from '../types/dispute';
+import { createNotification } from '../lib/notifications';
 
 export const disputesRouter = Router();
 
@@ -77,6 +78,15 @@ disputesRouter.post(
     batch.update(transRef, { status: 'disputed', updatedAt: now() });
 
     await batch.commit();
+
+    // Kirim notifikasi ke admin
+    await createNotification({
+      userId: 'admin',
+      type: 'dispute',
+      title: 'Sengketa Transaksi Baru',
+      body: `User ${reporterName} mengajukan klaim kerusakan untuk transaksi ${transactionId}.`,
+      transactionId: String(transactionId),
+    });
 
     return ok(res, { id: disputeRef.id, ...disputeData }, 'Klaim sengketa berhasil diajukan, admin akan segera meninjau.');
   }),
