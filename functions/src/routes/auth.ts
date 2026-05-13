@@ -61,7 +61,7 @@ authRouter.post(
       isOwner: input.isOwner,
       isRenter: input.isRenter,
       isAdmin: false,
-      status: 'pending',
+      status: 'unverified',
       ktpPhotoUrl: '',
       selfiePhotoUrl: '',
       avgRatingAsRenter: 0,
@@ -74,14 +74,6 @@ authRouter.post(
 
     try {
       await db.collection('users').doc(userRecord.uid).set(userDoc);
-      
-      // Kirim notifikasi ke admin
-      await createNotification({
-        userId: 'admin',
-        type: 'request',
-        title: 'Registrasi User Baru',
-        body: `User ${input.name} telah mendaftar dan memerlukan verifikasi berkas.`,
-      });
     } catch {
       await auth.deleteUser(userRecord.uid).catch(() => undefined);
       return fail(res, ERROR_CODES.INTERNAL_ERROR, 'Gagal menyimpan profil user', 500);

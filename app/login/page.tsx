@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTimer, setLockoutTimer] = useState(0);
-  
+
   const router = useRouter();
   const { user, isAdmin, loading } = useAuth();
 
@@ -47,34 +47,44 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const firebaseUser = userCredential.user;
 
       // Check if user is admin
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      
+
       if (!userDoc.exists() || userDoc.data().isAdmin !== true) {
         // Not an admin, throw error
         await auth.signOut();
         throw new Error('Unauthorized access. Admin privileges required.');
       }
-      
+
       // Success: Reset failed attempts
       setFailedAttempts(0);
       // If admin, routing is handled by useEffect via useAuth changes
     } catch (e: unknown) {
       const err = e as Error & { code?: string };
       console.error('Login error:', err);
-      
+
       if (err.message && err.message.includes('Unauthorized access')) {
         setError(err.message);
       } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many failed attempts. Access temporarily blocked for security.');
+        setError(
+          'Too many failed attempts. Access temporarily blocked for security.',
+        );
         setLockoutTimer(60); // Lock for 60 seconds
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      } else if (
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password'
+      ) {
         const newFailCount = failedAttempts + 1;
         setFailedAttempts(newFailCount);
-        
+
         if (newFailCount >= 5) {
           setLockoutTimer(30); // 30 seconds lockout after 5 fails
           setError(`Too many failed attempts. Please try again in 30 seconds.`);
@@ -104,9 +114,15 @@ export default function LoginPage() {
         {/* Brand Logo/Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-[var(--shadow-hover)] mb-4 transition-transform hover:scale-105">
-            <span className="text-white text-2xl font-bold font-serif">S</span>
+            <img
+              src="/logo.svg"
+              alt="Logo SewainAja"
+              className="w-full h-full object-contain"
+            />
           </div>
-          <h1 className="text-[24px] sm:text-[28px] font-bold text-text-primary text-center">SewainAja Admin</h1>
+          <h1 className="text-[24px] sm:text-[28px] font-bold text-text-primary text-center">
+            SewainAja Admin
+          </h1>
           <p className="text-text-secondary text-[13px] sm:text-[14px] mt-2 text-center">
             Sign in to access the control panel
           </p>
@@ -116,15 +132,22 @@ export default function LoginPage() {
         <div className="bg-surface p-6 sm:p-8 rounded-[var(--radius-lg)] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-soft)] border border-border-color">
           {error && (
             <div className="mb-6 p-4 bg-status-error/10 border border-status-error/20 rounded-[var(--radius-md)] flex items-start gap-3">
-              <AlertCircle size={20} className="text-status-error shrink-0 mt-0.5" />
-              <p className="text-[13px] text-status-error font-medium leading-relaxed">{error}</p>
+              <AlertCircle
+                size={20}
+                className="text-status-error shrink-0 mt-0.5"
+              />
+              <p className="text-[13px] text-status-error font-medium leading-relaxed">
+                {error}
+              </p>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             {/* Email Field */}
             <div className="flex flex-col gap-2">
-              <label className="text-[13px] font-medium text-text-primary ml-1">Email Address</label>
+              <label className="text-[13px] font-medium text-text-primary ml-1">
+                Email Address
+              </label>
               <div className="relative flex items-center">
                 <div className="absolute left-4 text-text-tertiary">
                   <Mail size={18} />
@@ -144,7 +167,9 @@ export default function LoginPage() {
             {/* Password Field */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center ml-1">
-                <label className="text-[13px] font-medium text-text-primary">Password</label>
+                <label className="text-[13px] font-medium text-text-primary">
+                  Password
+                </label>
               </div>
               <div className="relative flex items-center">
                 <div className="absolute left-4 text-text-tertiary">
@@ -189,10 +214,11 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-        
+
         {/* Footer */}
         <p className="text-center text-[12px] text-text-tertiary mt-8">
-          &copy; {new Date().getFullYear()} SewainAja Platform. All rights reserved.
+          &copy; {new Date().getFullYear()} SewainAja Platform. All rights
+          reserved.
         </p>
       </div>
     </div>

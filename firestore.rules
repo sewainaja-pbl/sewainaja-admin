@@ -1,0 +1,167 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fungsi pembantu umum
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // Asumsi role admin disimpan dalam custom claims.
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // users
+    match /users/{userId} {
+      // Semua orang bisa baca info basic (utk lihat profil renter/owner)
+      allow read: if isAuthenticated(); 
+      // Hanya user yang bersangkutan atau admin yang boleh update
+      allow update: if isUser(userId) || isAdmin();
+      // Pembuatan user dilakukan via backend setelah registrasi Auth
+      allow create, delete: if false; 
+      
+      // subcollection addresses
+      match /addresses/{addressId} {
+        // Hanya pemilik alamat yang bisa baca/tulis
+        allow read, write: if isUser(userId);
+      }
+    }
+
+    // item_categories
+    match /item_categories/{categoryId} {
+      allow read: if true; // Publik (bisa dibaca tanpa auth)
+      allow write: if isAdmin();
+    }
+
+    // items
+    match /items/{itemId} {
+      // Publik bisa lihat listing (bisa difilter yang available saja di client)
+      allow read: if true;
+      // Hanya owner item atau admin yang bisa write.
+      // Catatan: saat create, pastikan ownerId sama dengan request.auth.uid
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isAdmin(); // User pakai soft delete (status="archived")
+    }
+
+    // transactions
+    match /transactions/{transactionId} {
+      // Hanya renter, owner transaksi tersebut, atau admin yang bisa baca
+      allow read: if isAuthenticated() && (
+        resource.data.renterId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin()
+      );
+      // Pembuatan/update sebaiknya melalui backend API untuk menjaga integrity (status flow, booking, etc)
+      allow write: if false;
+
+      // subcollection transaction_details
+      match /transaction_details/{detailId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+        allow write: if false; // Diupdate backend
+      }
+
+      // subcollection chat_rooms
+      match /chat_rooms/{chatRoomId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+        allow write: if false; // Diupdate backend (inisialisasi room)
+
+        // subcollection messages
+        match /messages/{messageId} {
+          allow read: if isAuthenticated() && (
+            get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+            get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid ||
+            isAdmin()
+          );
+          // Renter/owner bisa mengirim pesan ke chat room transaksi
+          allow create: if isAuthenticated() && (
+            get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+            get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid
+          ) && request.resource.data.senderId == request.auth.uid;
+          
+          allow update: if false; // Edit hapus pesan bisa ditambah nanti (dengan cek senderId)
+          allow delete: if false;
+        }
+      }
+
+      // subcollection evidences
+      match /evidences/{evidenceId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+        // Bisa upload evidence (misal via backend atau client) asal bagian dari transaksi
+        // Disarankan lewat API agar aman, tapi jika langsung:
+        allow create: if isAuthenticated() && (
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid
+        ) && request.resource.data.uploaderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // subcollection gps_logs
+      match /gps_logs/{logId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.renterId == request.auth.uid ||
+          get(/databases/$(database)/documents/transactions/$(transactionId)).data.ownerId == request.auth.uid ||
+          isAdmin()
+        );
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // payments
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.payerId == request.auth.uid ||
+        // Membutuhkan get() ke transaksi untuk cek owner, agak mahal, lebih baik dari backend
+        isAdmin()
+      );
+      allow write: if false; // Semua urusan payment dihandle backend
+    }
+
+    // ratings
+    match /ratings/{ratingId} {
+      allow read: if true; // Publik bisa baca
+      allow write: if false; // Validasi 1 rating per transaksi dilakukan di backend
+    }
+
+    // disputes
+    match /disputes/{disputeId} {
+      // Reporter, atau admin yang bisa baca
+      allow read: if isAuthenticated() && (
+        resource.data.reportedBy == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if false; // Handle di backend
+    }
+
+    // notifications
+    match /notifications/{notificationId} {
+      // User hanya bisa baca notifikasinya sendiri ATAU admin bisa baca jika tujuannya untuk admin
+      allow read: if isUser(resource.data.userId) || (resource.data.userId == 'admin' && isAdmin());
+      
+      // User/Admin bisa update 'isRead'
+      allow update: if (isUser(resource.data.userId) || (resource.data.userId == 'admin' && isAdmin())) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        
+      allow create: if true; // Sementara diperbolehkan untuk testing penulisan client-side notifikasi
+      allow delete: if false; 
+    }
+  }
+}
