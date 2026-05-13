@@ -6,6 +6,7 @@ import { IdentityToolkitError, signInWithPassword } from '../lib/identity-toolki
 import { requireAuth } from '../middleware/require-auth';
 import type { UserDoc } from '../types/auth';
 import { asyncHandler } from '../lib/async-handler';
+import { createNotification } from '../lib/notifications';
 
 export const authRouter = Router();
 
@@ -73,6 +74,14 @@ authRouter.post(
 
     try {
       await db.collection('users').doc(userRecord.uid).set(userDoc);
+      
+      // Kirim notifikasi ke admin
+      await createNotification({
+        userId: 'admin',
+        type: 'request',
+        title: 'Registrasi User Baru',
+        body: `User ${input.name} telah mendaftar dan memerlukan verifikasi berkas.`,
+      });
     } catch {
       await auth.deleteUser(userRecord.uid).catch(() => undefined);
       return fail(res, ERROR_CODES.INTERNAL_ERROR, 'Gagal menyimpan profil user', 500);
@@ -190,6 +199,17 @@ authRouter.post(
       selfiePhotoUrl,
       status: 'pending',
       updatedAt: now(),
+    });
+
+    // Kirim notifikasi ke admin
+    const userData = snapshot.data();
+    const userName = userData?.name || 'User';
+    
+    await createNotification({
+      userId: 'admin',
+      type: 'request',
+      title: 'Pengunggahan Berkas KYC',
+      body: `User ${userName} telah mengunggah foto selfie untuk verifikasi akun.`,
     });
 
     return ok(res, { selfiePhotoUrl, status: 'pending' }, 'Foto selfie berhasil diunggah');

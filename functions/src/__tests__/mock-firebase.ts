@@ -5,7 +5,24 @@ type StoredUser = UserDoc & {
   updatedAt: unknown;
 };
 
+type StoredDispute = {
+  id: string;
+  transactionId: string;
+  reportedBy: string;
+  description: string;
+  status: 'open' | 'under_review' | 'resolved' | 'closed';
+  resolutionNote: string | null;
+  resolvedBy: string | null;
+  createdAt: unknown;
+  resolvedAt: unknown | null;
+  reporterName: string;
+  renterName: string;
+  itemNames: string[];
+  updatedAt?: unknown;
+};
+
 const users = new Map<string, StoredUser>();
+const disputes = new Map<string, StoredDispute>();
 const authUsersByEmail = new Map<
   string,
   {
@@ -63,40 +80,71 @@ const seedUser = (value: Partial<UserDoc> & { id: string }) => {
   return stored;
 };
 
+const seedDispute = (value: Partial<StoredDispute> & { id: string }) => {
+  const stored: StoredDispute = {
+    id: value.id,
+    transactionId: value.transactionId ?? 'trx-1',
+    reportedBy: value.reportedBy ?? 'uid-reporter',
+    description: value.description ?? '',
+    status: value.status ?? 'open',
+    resolutionNote: value.resolutionNote ?? null,
+    resolvedBy: value.resolvedBy ?? null,
+    createdAt: value.createdAt ?? new Date('2025-01-01T00:00:00.000Z'),
+    resolvedAt: value.resolvedAt ?? null,
+    reporterName: value.reporterName ?? 'Reporter',
+    renterName: value.renterName ?? 'Renter',
+    itemNames: value.itemNames ?? [],
+    updatedAt: value.updatedAt,
+  };
+  disputes.set(stored.id, stored);
+  return stored;
+};
+
 const reset = () => {
   users.clear();
+  disputes.clear();
   authUsersByEmail.clear();
   tokenClaims.clear();
 };
 
 const collection = (name: string) => {
-  if (name !== 'users') {
+  if (name !== 'users' && name !== 'disputes') {
     throw new Error(`Unexpected collection: ${name}`);
   }
 
+  const store = name === 'users' ? users : disputes;
+  const toMillis = (value: unknown) => {
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'string') return new Date(value).getTime();
+    if (value && typeof value === 'object' && 'seconds' in value && typeof (value as { seconds?: number }).seconds === 'number') {
+      return ((value as { seconds: number }).seconds ?? 0) * 1000;
+    }
+    return new Date(value as never).getTime();
+  };
+
   return {
     doc: (id: string) => ({
-      set: async (value: StoredUser) => {
-        users.set(id, { ...value, id });
+      set: async (value: StoredUser | StoredDispute) => {
+        store.set(id, { ...value, id } as StoredUser & StoredDispute);
       },
       get: async () => {
-        const value = users.get(id);
+        const value = store.get(id);
         return {
           exists: Boolean(value),
           data: () => value ?? null,
         };
       },
-      update: async (patch: Partial<StoredUser>) => {
-        const current = users.get(id);
+      update: async (patch: Partial<StoredUser> | Partial<StoredDispute>) => {
+        const current = store.get(id);
         if (!current) {
           throw new Error('missing user');
         }
-        users.set(id, { ...current, ...patch });
+        store.set(id, { ...current, ...patch } as StoredUser & StoredDispute);
       },
     }),
     where: (field: string, op: string, value: unknown) => {
-      if (field !== 'status' || op !== '==') {
-        throw new Error(`Unexpected query: ${field} ${op}`);
+      if (name !== 'users' || field !== 'status' || op !== '==') {
+        throw new Error(`Unexpected query: ${name}.${field} ${op}`);
       }
 
       const query = {
@@ -116,6 +164,23 @@ const collection = (name: string) => {
             return { docs };
           },
         }),
+      };
+
+      return query;
+    },
+    orderBy: (field: string, direction: string) => {
+      const query = {
+        get: async () => {
+          const docs = [...store.values()]
+            .sort((a, b) => {
+              const left = toMillis((a as { createdAt?: unknown })[field as 'createdAt']);
+              const right = toMillis((b as { createdAt?: unknown })[field as 'createdAt']);
+              return direction === 'asc' ? left - right : right - left;
+            })
+            .map((doc) => ({ id: doc.id, data: () => doc }));
+
+          return { docs };
+        },
       };
 
       return query;
@@ -162,10 +227,12 @@ export const mockFirebaseAdmin = {
   }),
   __state: {
     users,
+    disputes,
     authUsersByEmail,
     tokenClaims,
     seedAuthUser,
     seedUser,
+    seedDispute,
     reset,
   },
 };
@@ -197,6 +264,7 @@ export const mockIdentityToolkit = {
 export const mockState = {
   seedAuthUser,
   seedUser,
+  seedDispute,
   reset,
   tokenClaims,
 };
