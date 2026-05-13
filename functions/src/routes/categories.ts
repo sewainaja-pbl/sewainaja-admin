@@ -32,18 +32,30 @@ categoriesRouter.post(
   requireAuth,
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const { id, category, code, photoUrl, subcategories } = req.body;
+    const { category, code, photoUrl, subcategories } = req.body;
 
-    if (!id || !category || !code || !photoUrl || !Array.isArray(subcategories)) {
+    if (!category || !code || !photoUrl || !Array.isArray(subcategories)) {
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Data kategori tidak lengkap atau tidak valid', 400);
     }
 
-    const docId = String(id).trim();
+    // Auto-generate ID starting from '001'
+    const snapshot = await db.collection('item_categories').orderBy('id', 'desc').limit(1).get();
+    let nextIdNumber = 1;
+    if (!snapshot.empty) {
+      const lastCategory = snapshot.docs[0].data() as ItemCategoryDoc;
+      const lastIdStr = lastCategory.id;
+      const lastIdNum = parseInt(lastIdStr, 10);
+      if (!isNaN(lastIdNum)) {
+        nextIdNumber = lastIdNum + 1;
+      }
+    }
+    const docId = nextIdNumber.toString().padStart(3, '0');
+    
     const docRef = db.collection('item_categories').doc(docId);
     
-    const snapshot = await docRef.get();
-    if (snapshot.exists) {
-      return fail(res, ERROR_CODES.CONFLICT, 'Kategori dengan ID tersebut sudah ada', 409);
+    const checkSnapshot = await docRef.get();
+    if (checkSnapshot.exists) {
+      return fail(res, ERROR_CODES.CONFLICT, 'Gagal membuat ID kategori yang unik', 409);
     }
 
     const categoryData: ItemCategoryDoc = {
