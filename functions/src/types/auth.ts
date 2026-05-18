@@ -1,4 +1,4 @@
-export type UserStatus = 'pending' | 'verified' | 'suspended';
+export type UserStatus = 'unverified' | 'pending' | 'verified' | 'suspended';
 
 export interface RequestUser {
   uid: string;

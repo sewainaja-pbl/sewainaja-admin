@@ -19,8 +19,8 @@ const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) 
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// Connect to Emulators if in development
-if (process.env.NODE_ENV === 'development') {
+// Connect to Emulators if specified in environment configuration
+if (process.env.NEXT_PUBLIC_USE_EMULATOR === 'true') {
   // Check if we already connected to emulator to avoid multiple connections during HMR
   if (!(auth as unknown as { _emulatorConfig?: boolean })._emulatorConfig) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9001');

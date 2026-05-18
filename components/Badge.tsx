@@ -1,5 +1,5 @@
 interface BadgeProps {
-  status: 'active' | 'pending' | 'success' | 'error';
+  status: 'active' | 'pending' | 'success' | 'error' | 'unverified';
   label: string;
 }
 
@@ -8,7 +8,8 @@ const Badge = ({ status, label }: BadgeProps) => {
     active: 'bg-status-active text-white',
     success: 'bg-status-success text-white',
     error: 'bg-status-error text-white',
-    pending: 'bg-status-pending text-text-primary'
+    pending: 'bg-status-pending text-text-primary',
+    unverified: 'bg-slate-100 text-slate-600 border border-slate-200'
   };
 
   return (

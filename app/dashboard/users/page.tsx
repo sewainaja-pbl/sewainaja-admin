@@ -21,7 +21,7 @@ interface UserDoc {
   isOwner?: boolean;
   isRenter?: boolean;
   isAdmin?: boolean;
-  status: 'pending' | 'verified' | 'suspended';
+  status: 'unverified' | 'pending' | 'verified' | 'suspended';
   ktpPhotoUrl?: string;
   selfiePhotoUrl?: string;
   createdAt?: Timestamp | FirestoreTimestampLike | string;
@@ -141,7 +141,9 @@ export default function UsersManagement() {
     switch (status) {
       case 'verified': return { status: 'success' as const, label: 'Verified' };
       case 'suspended': return { status: 'error' as const, label: 'Suspended' };
-      default: return { status: 'pending' as const, label: 'Pending' };
+      case 'pending': return { status: 'pending' as const, label: 'Pending' };
+      case 'unverified':
+      default: return { status: 'unverified' as const, label: 'Unverified' };
     }
   };
 

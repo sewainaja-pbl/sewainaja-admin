@@ -63,3 +63,5 @@ next-env.d.ts
 .firestore-debug.log
 database-debug.log
 firebase-debug.log
+
+/functions/service-account.json

@@ -3,8 +3,8 @@ import app from './firebase';
 
 export const db: Firestore = getFirestore(app);
 
-// Connect to Firestore Emulator if in development
-if (process.env.NODE_ENV === 'development') {
+// Connect to Firestore Emulator if specified in environment configuration
+if (process.env.NEXT_PUBLIC_USE_EMULATOR === 'true') {
   // Use a private property check to prevent double connection during HMR
   if (!(db as unknown as { _settingsFrozen?: boolean })._settingsFrozen) {
     connectFirestoreEmulator(db, '127.0.0.1', 8001);
