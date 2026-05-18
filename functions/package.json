@@ -20,8 +20,10 @@
     "seed:categories:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-categories.ts",
     "seed:dashboard": "npx ts-node scripts/seed-dashboard.ts",
     "seed:dashboard:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-dashboard.ts",
-    "seed": "npm run seed:admin && npm run seed:users && npm run seed:categories && npm run seed:dashboard",
-    "seed:emulator": "npm run seed:admin:emulator && npm run seed:users:emulator && npm run seed:categories:emulator && npm run seed:dashboard:emulator"
+    "seed:transactions": "npx ts-node scripts/seed-transactions.ts",
+    "seed:transactions:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-transactions.ts",
+    "seed": "npm run seed:admin && npm run seed:users && npm run seed:categories && npm run seed:dashboard && npm run seed:transactions",
+    "seed:emulator": "npm run seed:admin:emulator && npm run seed:users:emulator && npm run seed:categories:emulator && npm run seed:dashboard:emulator && npm run seed:transactions:emulator"
   },
   "dependencies": {
     "cors": "^2.8.5",

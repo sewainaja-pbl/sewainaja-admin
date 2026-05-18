@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutGrid, Users, MessageSquareWarning, Tags, Bell, Settings, LogOut } from 'lucide-react';
+import { LayoutGrid, Users, Receipt, MessageSquareWarning, Tags, Bell, Settings, LogOut } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 
@@ -53,6 +53,16 @@ const Sidebar = () => {
             <Users size={22} strokeWidth={2} />
           </div>
           <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Users</span>
+        </Link>
+        <Link 
+          href="/dashboard/transactions" 
+          className={`w-full h-[52px] flex items-center justify-start px-[14px] rounded-[26px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] whitespace-nowrap ${isActive('/dashboard/transactions') ? 'bg-primary !text-[#FFFFFF] shadow-[0_4px_12px_rgba(1,45,29,0.2)]' : 'text-text-tertiary bg-transparent hover:text-primary hover:bg-background'}`} 
+          title="Transactions"
+        >
+          <div className="flex items-center justify-center shrink-0">
+            <Receipt size={22} strokeWidth={2} />
+          </div>
+          <span className="ml-4 text-[14px] font-medium opacity-0 transition-opacity duration-200 ease-in pointer-events-none group-hover:opacity-100 group-hover:delay-100">Transactions</span>
         </Link>
         <Link 
           href="/dashboard/disputes" 

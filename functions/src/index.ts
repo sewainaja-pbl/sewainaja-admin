@@ -51,5 +51,5 @@ app.use(
   },
 );
 
-export const api = onRequest(app);
+export const api = onRequest({ cors: true }, app);
 export default api;
