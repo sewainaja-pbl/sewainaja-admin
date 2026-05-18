@@ -24,7 +24,7 @@ function tryLoadLocalEnvFiles(): void {
 }
 
 function parseServiceAccountFromEnv(): admin.ServiceAccount | null {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const raw = process.env.SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw) return null;
 
   const parsed = JSON.parse(raw) as admin.ServiceAccount & { private_key?: string };
@@ -35,7 +35,7 @@ function parseServiceAccountFromEnv(): admin.ServiceAccount | null {
 }
 
 function readServiceAccountFromFile(): admin.ServiceAccount | null {
-  const explicitPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH;
+  const explicitPath = process.env.SERVICE_ACCOUNT_KEY_PATH || process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH;
   const googleAppCredPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const keyPath = explicitPath || googleAppCredPath;
   if (!keyPath) return null;

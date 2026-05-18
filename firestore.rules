@@ -38,6 +38,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // app_stats
+    match /app_stats/{statId} {
+      allow read, write: if isAdmin();
+    }
+
+    // admin_tasks
+    match /admin_tasks/{taskId} {
+      allow read, write: if isAdmin();
+    }
+
+    // user_activity_logs
+    match /user_activity_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
     // items
     match /items/{itemId} {
       // Publik bisa lihat listing (bisa difilter yang available saja di client)

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tags, Search, Plus, Pencil, Trash2, Loader2, X, Check, ImagePlus, AlertCircle } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/api';
 import { storage } from '@/lib/firebase';
+import { db } from '@/lib/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
 
 interface ItemCategoryDoc {
   id: string;
@@ -42,8 +43,10 @@ export default function CategoriesManagement() {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth<ApiResponse<ItemCategoryDoc[]>>('/categories');
-      if (res.success) setCategories(res.data);
+      const q = query(collection(db, 'item_categories'), orderBy('id', 'asc'));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => doc.data() as ItemCategoryDoc);
+      setCategories(data);
     } catch (e) {
       console.error('Error fetching categories:', e);
     } finally {
@@ -135,23 +138,41 @@ export default function CategoriesManagement() {
       }
 
       if (editingCategory) {
-        const res = await fetchWithAuth<ApiResponse<ItemCategoryDoc>>(`/categories/${editingCategory.id}`, {
-          method: 'PATCH',
-          body: { category: form.category.trim(), code: form.code.trim(), photoUrl: finalPhotoUrl, subcategories: form.subcategories },
-        });
-        if (res.success) {
-          setCategories((prev) => prev.map((c) => (c.id === editingCategory.id ? res.data : c)));
-          closeModal();
-        }
+        const docRef = doc(db, 'item_categories', editingCategory.id);
+        const updatedData = {
+          category: form.category.trim(),
+          code: form.code.trim(),
+          photoUrl: finalPhotoUrl,
+          subcategories: form.subcategories
+        };
+        await updateDoc(docRef, updatedData);
+        setCategories((prev) => prev.map((c) => (c.id === editingCategory.id ? { ...c, ...updatedData } : c)));
+        closeModal();
       } else {
-        const res = await fetchWithAuth<ApiResponse<ItemCategoryDoc>>('/categories', {
-          method: 'POST',
-          body: { category: form.category.trim(), code: form.code.trim(), photoUrl: finalPhotoUrl, subcategories: form.subcategories },
-        });
-        if (res.success) {
-          setCategories((prev) => [...prev, res.data].sort((a, b) => a.id.localeCompare(b.id)));
-          closeModal();
+        // Auto-generate ID starting from '001'
+        const q = query(collection(db, 'item_categories'), orderBy('id', 'desc'), limit(1));
+        const snapshot = await getDocs(q);
+        let nextIdNumber = 1;
+        if (!snapshot.empty) {
+          const lastCategory = snapshot.docs[0].data() as ItemCategoryDoc;
+          const lastIdStr = lastCategory.id;
+          const lastIdNum = parseInt(lastIdStr, 10);
+          if (!isNaN(lastIdNum)) {
+            nextIdNumber = lastIdNum + 1;
+          }
         }
+        const docId = nextIdNumber.toString().padStart(3, '0');
+        const docRef = doc(db, 'item_categories', docId);
+        const categoryData: ItemCategoryDoc = {
+          id: docId,
+          category: form.category.trim(),
+          code: form.code.trim(),
+          photoUrl: finalPhotoUrl,
+          subcategories: form.subcategories,
+        };
+        await setDoc(docRef, categoryData);
+        setCategories((prev) => [...prev, categoryData].sort((a, b) => a.id.localeCompare(b.id)));
+        closeModal();
       }
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : 'Terjadi kesalahan, coba lagi.');
@@ -164,7 +185,8 @@ export default function CategoriesManagement() {
     if (!confirm(`Hapus kategori "${cat.category}"? Tindakan ini tidak dapat dibatalkan.`)) return;
     setDeletingId(cat.id);
     try {
-      await fetchWithAuth(`/categories/${cat.id}`, { method: 'DELETE' });
+      const docRef = doc(db, 'item_categories', cat.id);
+      await deleteDoc(docRef);
       setCategories((prev) => prev.filter((c) => c.id !== cat.id));
     } catch (e) {
       console.error('Delete error:', e);
