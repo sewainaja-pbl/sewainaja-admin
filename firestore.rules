@@ -60,7 +60,7 @@ service cloud.firestore {
       // Hanya owner item atau admin yang bisa write.
       // Catatan: saat create, pastikan ownerId sama dengan request.auth.uid
       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
       allow delete: if isAdmin(); // User pakai soft delete (status="archived")
     }
 
