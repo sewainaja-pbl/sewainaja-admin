@@ -209,35 +209,106 @@ const mockPayments = [
 async function seedTransactions() {
   console.log('Menyiapkan seeding transaksi...\n');
 
+  const usersSnap = await db.collection('users').get();
+  const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+  const renters = allUsers.filter((u: any) => u.isRenter === true);
+
+  if (renters.length === 0) {
+    throw new Error('Tidak ada user dengan isRenter == true. Jalankan seed:users terlebih dahulu.');
+  }
+
+  const itemsSnap = await db.collection('items').where('status', '==', 'available').get();
+  if (itemsSnap.empty) {
+    throw new Error('Tidak ada barang yang available. Jalankan seed:items terlebih dahulu.');
+  }
+  const availableItems = itemsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
   const batch = db.batch();
   let countTx = 0;
   let countDetails = 0;
   let countPayments = 0;
 
-  // 1. Transactions
-  for (const tx of mockTransactions) {
-    const docRef = db.collection('transactions').doc(tx.id);
-    batch.set(docRef, tx);
+  // Let's create realistic transactions based on the items available
+  const numTransactionsToCreate = Math.min(4, availableItems.length);
+  
+  for (let i = 0; i < numTransactionsToCreate; i++) {
+    const item = availableItems[i];
+    
+    // Pick a renter that is NOT the owner
+    const validRenters = renters.filter(u => u.id !== item.ownerId);
+    if (validRenters.length === 0) continue; // Skip if no valid renter
+    
+    const renter = validRenters[Math.floor(Math.random() * validRenters.length)];
+    const txRef = db.collection('transactions').doc();
+    const txId = txRef.id;
+    
+    // Calculate dates
+    const now = new Date();
+    const startDate = new Date(now.getTime() + (i * 24 * 60 * 60 * 1000)); // +i days
+    const endDate = new Date(startDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // +2 days from start
+    
+    const subtotal = item.pricePerHour * 48; // Assume 48 hours (2 days)
+    
+    const statuses = ['pending', 'approved', 'ongoing', 'completed', 'disputed'];
+    const txStatus = statuses[i % statuses.length];
+    
+    // 1. Transaction Document
+    const txData = {
+      id: txId,
+      renterId: renter.id,
+      ownerId: item.ownerId,
+      totalPrice: subtotal,
+      totalItems: 1,
+      status: txStatus,
+      isOverdue: txStatus === 'disputed',
+      qrCheckinTokenHash: 'hash_in_' + txId,
+      qrCheckinExpiredAt: admin.firestore.Timestamp.fromDate(new Date(startDate.getTime() + 3600000)),
+      qrCheckoutTokenHash: 'hash_out_' + txId,
+      qrCheckoutExpiredAt: admin.firestore.Timestamp.fromDate(new Date(endDate.getTime() + 3600000)),
+      checkinAt: ['ongoing', 'completed', 'disputed'].includes(txStatus) ? admin.firestore.Timestamp.fromDate(startDate) : null,
+      checkoutAt: ['completed'].includes(txStatus) ? admin.firestore.Timestamp.fromDate(endDate) : null,
+      createdAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now(),
+      renterName: renter.name,
+      ownerName: item.ownerName,
+    };
+    batch.set(txRef, txData);
     countTx++;
-    console.log('Menambahkan transaksi: ' + tx.id);
+    console.log(`Menambahkan transaksi: ${txId} (${txStatus})`);
 
-    // 2. Transaction Details (Subcollection)
-    const details = mockTransactionDetails[tx.id as keyof typeof mockTransactionDetails];
-    if (details) {
-      for (const detail of details) {
-        const detailRef = docRef.collection('transaction_details').doc(detail.id);
-        batch.set(detailRef, detail);
-        countDetails++;
-      }
-    }
-  }
+    // 2. Transaction Details
+    const detailRef = txRef.collection('transaction_details').doc();
+    const detailData = {
+      id: detailRef.id,
+      itemId: item.id,
+      startDate: admin.firestore.Timestamp.fromDate(startDate),
+      endDate: admin.firestore.Timestamp.fromDate(endDate),
+      priceAtBooking: item.pricePerHour,
+      itemNameSnapshot: item.name,
+      itemPhotoUrlSnapshot: item.categoryPhotoUrl || '',
+      subtotal: subtotal,
+    };
+    batch.set(detailRef, detailData);
+    countDetails++;
 
-  // 3. Payments
-  for (const payment of mockPayments) {
-    const docRef = db.collection('payments').doc(payment.id);
-    batch.set(docRef, payment);
+    // 3. Payment Document
+    const paymentRef = db.collection('payments').doc();
+    const paymentStatus = ['pending'].includes(txStatus) ? 'pending' : 'paid';
+    const paymentData = {
+      id: paymentRef.id,
+      transactionId: txId,
+      amount: subtotal,
+      status: paymentStatus,
+      paymentMethod: 'midtrans',
+      midtransOrderId: 'ORDER-' + txId,
+      midtransPaymentType: 'qris',
+      paymentProofUrl: null,
+      paidAt: paymentStatus === 'paid' ? admin.firestore.Timestamp.now() : null,
+      createdAt: admin.firestore.Timestamp.now(),
+    };
+    batch.set(paymentRef, paymentData);
     countPayments++;
-    console.log('Menambahkan pembayaran: ' + payment.id);
+    console.log(`Menambahkan pembayaran: ${paymentRef.id}`);
   }
 
   await batch.commit();
