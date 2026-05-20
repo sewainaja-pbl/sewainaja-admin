@@ -51,5 +51,5 @@ app.use(
   },
 );
 
-export const api = onRequest({ cors: true }, app);
+export const api = onRequest({ cors: true, invoker: 'public' }, app);
 export default api;

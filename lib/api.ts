@@ -1,6 +1,8 @@
 import { auth } from './firebase';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const USE_EMULATOR = process.env.NEXT_PUBLIC_USE_EMULATOR === 'true';
+const EMULATOR_API_URL = `http://127.0.0.1:5002/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'sewainaja-b4834'}/us-central1/api`;
+const API_URL = USE_EMULATOR ? EMULATOR_API_URL : (process.env.NEXT_PUBLIC_API_URL || '');
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
