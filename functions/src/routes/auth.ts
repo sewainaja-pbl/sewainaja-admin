@@ -62,6 +62,7 @@ authRouter.post(
       isRenter: input.isRenter,
       isAdmin: false,
       status: 'unverified',
+      profilePhotoUrl: '',
       ktpPhotoUrl: '',
       selfiePhotoUrl: '',
       avgRatingAsRenter: 0,
@@ -128,6 +129,7 @@ authRouter.post(
             name: user.name,
             email: user.email,
             phone: user.phone,
+            profilePhotoUrl: user.profilePhotoUrl ?? '',
             status: user.status,
             isOwner: user.isOwner,
             isRenter: user.isRenter,
@@ -238,6 +240,10 @@ authRouter.patch(
         return fail(res, ERROR_CODES.INVALID_INPUT, 'Nomor telepon tidak boleh kosong', 400);
       }
       updates.phone = phone;
+    }
+
+    if (typeof req.body.profilePhotoUrl === 'string') {
+      updates.profilePhotoUrl = req.body.profilePhotoUrl.trim();
     }
 
     if (req.body.isOwner !== undefined) {

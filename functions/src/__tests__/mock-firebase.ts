@@ -44,6 +44,7 @@ const toStoredUser = (value: Partial<UserDoc> & { id: string }): StoredUser => (
   isRenter: value.isRenter ?? false,
   isAdmin: value.isAdmin ?? false,
   status: value.status ?? 'pending',
+  profilePhotoUrl: value.profilePhotoUrl ?? '',
   ktpPhotoUrl: value.ktpPhotoUrl ?? '',
   selfiePhotoUrl: value.selfiePhotoUrl ?? '',
   avgRatingAsRenter: value.avgRatingAsRenter ?? 0,
