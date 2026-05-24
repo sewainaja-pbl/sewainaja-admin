@@ -1,8 +1,61 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isImageUpload() {
+      return request.resource != null &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    function isWithinSizeLimit(maxBytes) {
+      return request.resource != null &&
+        request.resource.size <= maxBytes;
+    }
+
+    function isItemOwner(itemId) {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/items/$(itemId)).data.ownerId == request.auth.uid;
+    }
+
+    // Public read so uploaded photos can be rendered by the mobile app and admin dashboard.
+    // Write access is restricted per folder below.
+
+    // Admin dashboard category icons.
+    match /category_icons/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() &&
+        isImageUpload() &&
+        isWithinSizeLimit(2 * 1024 * 1024);
+    }
+
+    // User avatar: one canonical file path, overwritten on update.
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() &&
+        request.auth.uid == userId &&
+        fileName == 'avatar.jpg' &&
+        isImageUpload() &&
+        isWithinSizeLimit(1 * 1024 * 1024);
+    }
+
+    // Item gallery photos: only the item owner may upload/update/delete.
+    match /items/{itemId}/photos/{fileName} {
+      allow read: if true;
+      allow write: if isItemOwner(itemId) &&
+        isImageUpload() &&
+        isWithinSizeLimit(3 * 1024 * 1024);
+    }
+
+    // Deny everything else by default.
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

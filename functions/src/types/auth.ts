@@ -15,6 +15,7 @@ export interface UserDoc {
   isRenter: boolean;
   isAdmin: boolean;
   status: UserStatus;
+  profilePhotoUrl: string;
   ktpPhotoUrl: string;
   selfiePhotoUrl: string;
   avgRatingAsRenter: number;
