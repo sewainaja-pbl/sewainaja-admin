@@ -287,3 +287,111 @@ authRouter.post(
     return ok(res, { fcmToken }, 'Token FCM berhasil diperbarui');
   }),
 );
+
+authRouter.post(
+  '/login-google',
+  asyncHandler(async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const idToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : null;
+
+    if (!idToken) {
+      return fail(res, ERROR_CODES.UNAUTHORIZED, 'Token tidak ditemukan', 401);
+    }
+
+    try {
+      const decoded = await auth.verifyIdToken(idToken);
+      const { uid, email, name, picture } = decoded;
+
+      const userRef = db.collection('users').doc(uid);
+      const userSnap = await userRef.get();
+
+      if (userSnap.exists) {
+        const user = userSnap.data()!;
+
+        if (user.status === 'suspended') {
+          return fail(res, ERROR_CODES.FORBIDDEN, 'Akun kamu telah disuspend', 403);
+        }
+
+        await userRef.update({
+          lastLoginAt: now(),
+          updatedAt: now(),
+        });
+
+        const updatedUserSnap = await userRef.get();
+        const updatedUser = updatedUserSnap.data()!;
+
+        return ok(
+          res,
+          {
+            user: {
+              id: updatedUser.id,
+              name: updatedUser.name,
+              email: updatedUser.email,
+              phone: updatedUser.phone,
+              profilePhotoUrl: updatedUser.profilePhotoUrl ?? '',
+              status: updatedUser.status,
+              isOwner: updatedUser.isOwner,
+              isRenter: updatedUser.isRenter,
+              isAdmin: updatedUser.isAdmin,
+              lastLoginAt: updatedUser.lastLoginAt,
+            },
+          },
+          'Login via Google berhasil',
+        );
+      }
+
+      const timestamp = now();
+      const newUser: UserDoc = {
+        id: uid,
+        name: name ?? '',
+        email: email ?? '',
+        phone: '',
+        isOwner: true,
+        isRenter: true,
+        isAdmin: false,
+        status: 'pending',
+        ktpPhotoUrl: '',
+        selfiePhotoUrl: '',
+        profilePhotoUrl: picture ?? '',
+        avgRatingAsRenter: 0,
+        avgRatingAsOwner: 0,
+        totalTransactions: 0,
+        fcmToken: '',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastLoginAt: timestamp,
+      };
+
+      await userRef.set(newUser);
+
+      return res.status(201).json({
+        success: true,
+        data: newUser,
+        message: 'Registrasi via Google berhasil',
+      });
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string; message?: string };
+      const errorCode = firebaseError?.code;
+
+      if (errorCode === 'auth/id-token-expired') {
+        return fail(res, ERROR_CODES.UNAUTHORIZED, 'Token kadaluarsa, silakan login ulang', 401);
+      }
+      if (
+        errorCode === 'auth/argument-error' ||
+        errorCode === 'auth/invalid-id-token'
+      ) {
+        return fail(res, ERROR_CODES.UNAUTHORIZED, 'Token tidak valid', 401);
+      }
+
+      return fail(
+        res,
+        ERROR_CODES.INTERNAL_ERROR,
+        firebaseError.message || 'Login via Google gagal',
+        500
+      );
+    }
+  }),
+);
+

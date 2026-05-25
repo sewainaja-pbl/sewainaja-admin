@@ -24,6 +24,7 @@ export interface UserDoc {
   fcmToken: string;
   createdAt: unknown;
   updatedAt: unknown;
+  lastLoginAt?: unknown;
 }
 
 declare module 'express-serve-static-core' {

@@ -42,7 +42,7 @@ describe('POST /auth/register', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(response.body.data.status).toBe('pending');
+    expect(response.body.data.status).toBe('unverified');
 
     const [storedUser] = [...mockFirebaseAdmin.__state.users.values()];
     expect(storedUser.email).toBe('gufron@mail.com');
