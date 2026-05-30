@@ -53,14 +53,19 @@ addressesRouter.get(
       .collection('users')
       .doc(uid)
       .collection('addresses')
-      .orderBy('isDefault', 'desc')
       .orderBy('createdAt', 'desc')
       .get();
 
-    const addresses = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const addresses = snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }) as AddressDoc)
+      .sort((a, b) => {
+        if (a.isDefault === true && b.isDefault !== true) return -1;
+        if (a.isDefault !== true && b.isDefault === true) return 1;
+        return 0;
+      });
 
     return ok(res, addresses, 'Daftar alamat berhasil diambil');
   }),
