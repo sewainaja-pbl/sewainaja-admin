@@ -73,7 +73,7 @@ describe('POST /auth/login-google', () => {
     expect(response.body.data.name).toBe('New Google User');
     expect(response.body.data.email).toBe('new-google-user@example.com');
     expect(response.body.data.profilePhotoUrl).toBe('https://lh3.googleusercontent.com/new-pic');
-    expect(response.body.data.status).toBe('pending');
+    expect(response.body.data.status).toBe('unverified');
     expect(response.body.data.isOwner).toBe(true);
     expect(response.body.data.isRenter).toBe(true);
     expect(response.body.data.isAdmin).toBe(false);

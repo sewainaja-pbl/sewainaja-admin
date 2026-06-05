@@ -353,7 +353,7 @@ authRouter.post(
         isOwner: true,
         isRenter: true,
         isAdmin: false,
-        status: 'pending',
+        status: 'unverified',
         ktpPhotoUrl: '',
         selfiePhotoUrl: '',
         profilePhotoUrl: picture ?? '',
