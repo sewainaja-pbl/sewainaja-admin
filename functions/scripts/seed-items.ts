@@ -1,5 +1,5 @@
 /**
- * Script untuk membuat data dummy barang di Firebase.
+ * Script untuk membuat data dummy barang di Firebase dengan gambar yang di-upload ke Firebase Storage.
  *
  * UNTUK EMULATOR (lokal):
  *   $env:USE_EMULATOR='true'; npx ts-node scripts/seed-items.ts
@@ -15,12 +15,28 @@ initializeFirebaseForSeed();
 
 const db = admin.firestore();
 
+// Daftar UID yang benar dari user
+const correctUids = [
+  '20rcWINNGkQWOURhJTfQ2unRS053',
+  '2Z6c6ovqnvSVbKRYRgk9ok0k5v2',
+  '34wfmf8cwGawDVWSmy6Iy13VHJ23',
+  '3b8m1xRFK6DkVnhr09io',
+  '8an5ryUuoTQJ01IuEzvBLUgv4xa2',
+  'DUsk77tWNTwayGmxbmGenNUyPrr2',
+  'I49LFsSxizZyu3NhPwfH',
+  'LyEM1xkbjhQnVN5zMaRVgdp9DGf1',
+  'QLBq6C7tZ0cMTY5m76xUWmsk2h32',
+  'Vb6dIh3nDNVNQNFPgsvuAi0Jnd63',
+  'rwFUdAu70GObZlLXP2vOr7EtUH22',
+  'tMHLEgLbi7VdhTTMFylFi3JSnk2',
+  'uY6FPn2VMSYyBpifwtEbbFIUUps1',
+  'zJaWAmak7FYcItz3nJwkglcCOXD3',
+  'zglbhUkGVqRzuXXesM5uJnE1JxN2'
+];
+
 const mockItems = [
   {
     id: 'item1',
-    ownerId: 'user2',
-    ownerName: 'Siti Aminah',
-    ownerRating: 4.8,
     categoryId: '003',
     categoryName: 'Alat Camping',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/2972/2972166.png',
@@ -30,7 +46,7 @@ const mockItems = [
     estimatedValue: 2500000,
     status: 'available',
     condition: 'like-new',
-    photos: [],
+    imageMapping: ['tenda_camping.png', 'matras_camping.png'],
     qrCodeToken: 'QR_TOKEN_001',
     address: {
       addressId: 'addr1',
@@ -44,9 +60,6 @@ const mockItems = [
   },
   {
     id: 'item2',
-    ownerId: 'user2',
-    ownerName: 'Siti Aminah',
-    ownerRating: 4.8,
     categoryId: '002',
     categoryName: 'Kamera & Lensa',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3178/3178168.png',
@@ -56,7 +69,7 @@ const mockItems = [
     estimatedValue: 8000000,
     status: 'available',
     condition: 'new',
-    photos: [],
+    imageMapping: ['camera_sony.jpg', 'sony_camera.png'],
     qrCodeToken: 'QR_TOKEN_002',
     address: {
       addressId: 'addr1',
@@ -70,9 +83,6 @@ const mockItems = [
   },
   {
     id: 'item3',
-    ownerId: 'user2',
-    ownerName: 'Siti Aminah',
-    ownerRating: 4.8,
     categoryId: '002',
     categoryName: 'Kamera & Lensa',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3178/3178168.png',
@@ -82,7 +92,7 @@ const mockItems = [
     estimatedValue: 3500000,
     status: 'available',
     condition: 'like-new',
-    photos: [],
+    imageMapping: ['camera_nikon.jpg'],
     qrCodeToken: 'QR_TOKEN_003',
     address: {
       addressId: 'addr1',
@@ -96,9 +106,6 @@ const mockItems = [
   },
   {
     id: 'item4',
-    ownerId: 'user5',
-    ownerName: 'Ahmad Fauzi',
-    ownerRating: 4.5,
     categoryId: '001',
     categoryName: 'Elektronik',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3616/3616180.png',
@@ -108,7 +115,7 @@ const mockItems = [
     estimatedValue: 3000000,
     status: 'available',
     condition: 'fair',
-    photos: [],
+    imageMapping: ['camera_canon.jpg'],
     qrCodeToken: 'QR_TOKEN_004',
     address: {
       addressId: 'addr2',
@@ -122,9 +129,6 @@ const mockItems = [
   },
   {
     id: 'item5',
-    ownerId: 'user5',
-    ownerName: 'Ahmad Fauzi',
-    ownerRating: 4.5,
     categoryId: '004',
     categoryName: 'Konsol Game',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/1368/1368147.png',
@@ -134,7 +138,7 @@ const mockItems = [
     estimatedValue: 5500000,
     status: 'inactive',
     condition: 'fair',
-    photos: [],
+    imageMapping: ['ps5_controller.png'],
     qrCodeToken: 'QR_TOKEN_005',
     address: {
       addressId: 'addr2',
@@ -148,9 +152,6 @@ const mockItems = [
   },
   {
     id: 'item6',
-    ownerId: 'user3',
-    ownerName: 'Andi Saputra',
-    ownerRating: 4.9,
     categoryId: '003',
     categoryName: 'Alat Camping',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/2972/2972166.png',
@@ -160,7 +161,7 @@ const mockItems = [
     estimatedValue: 1200000,
     status: 'available',
     condition: 'new',
-    photos: [],
+    imageMapping: ['sleeping_bag.png'],
     qrCodeToken: 'QR_TOKEN_006',
     address: {
       addressId: 'addr3',
@@ -174,9 +175,6 @@ const mockItems = [
   },
   {
     id: 'item7',
-    ownerId: 'user3',
-    ownerName: 'Andi Saputra',
-    ownerRating: 4.9,
     categoryId: '001',
     categoryName: 'Elektronik',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3616/3616180.png',
@@ -186,7 +184,7 @@ const mockItems = [
     estimatedValue: 4500000,
     status: 'available',
     condition: 'like-new',
-    photos: [],
+    imageMapping: ['airpods_max.png'],
     qrCodeToken: 'QR_TOKEN_007',
     address: {
       addressId: 'addr3',
@@ -200,9 +198,6 @@ const mockItems = [
   },
   {
     id: 'item8',
-    ownerId: 'user4',
-    ownerName: 'Dewi Lestari',
-    ownerRating: 4.7,
     categoryId: '003',
     categoryName: 'Alat Camping',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/2972/2972166.png',
@@ -212,7 +207,7 @@ const mockItems = [
     estimatedValue: 2800000,
     status: 'available',
     condition: 'fair',
-    photos: [],
+    imageMapping: ['tas_carrier.png'],
     qrCodeToken: 'QR_TOKEN_008',
     address: {
       addressId: 'addr4',
@@ -226,9 +221,6 @@ const mockItems = [
   },
   {
     id: 'item9',
-    ownerId: 'user4',
-    ownerName: 'Dewi Lestari',
-    ownerRating: 4.7,
     categoryId: '002',
     categoryName: 'Kamera & Lensa',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3178/3178168.png',
@@ -238,7 +230,7 @@ const mockItems = [
     estimatedValue: 1500000,
     status: 'available',
     condition: 'like-new',
-    photos: [],
+    imageMapping: ['lentera_camping.png', 'kompor_camping.png'],
     qrCodeToken: 'QR_TOKEN_009',
     address: {
       addressId: 'addr4',
@@ -252,9 +244,6 @@ const mockItems = [
   },
   {
     id: 'item10',
-    ownerId: 'user1',
-    ownerName: 'Budi Santoso',
-    ownerRating: 4.6,
     categoryId: '001',
     categoryName: 'Elektronik',
     categoryPhotoUrl: 'https://cdn-icons-png.flaticon.com/512/3616/3616180.png',
@@ -264,7 +253,7 @@ const mockItems = [
     estimatedValue: 12000000,
     status: 'blocked',
     condition: 'new',
-    photos: [],
+    imageMapping: ['hp_asus.jpg', 'hp_realme.jpg'],
     qrCodeToken: 'QR_TOKEN_010',
     address: {
       addressId: 'addr5',
@@ -279,31 +268,94 @@ const mockItems = [
 ];
 
 async function seedItems() {
-  console.log('Menyiapkan seeding barang...\n');
+  console.log('Menyiapkan seeding barang dengan aturan folder uploads...\n');
 
-  const usersSnap = await db.collection('users').where('isOwner', '==', true).get();
+  // Ambil user yang valid di Firestore
+  const usersSnap = await db.collection('users').get();
   if (usersSnap.empty) {
-    throw new Error('Tidak ada user dengan isOwner == true. Jalankan seed:users terlebih dahulu.');
+    throw new Error('Tidak ada user di database Firestore. Jalankan seed:users terlebih dahulu.');
   }
-  const owners = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+  // Filter user yang UID nya ada di correctUids
+  const validOwners = usersSnap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() } as any))
+    .filter(u => correctUids.includes(u.id));
+
+  // Jika tidak ada user database yang cocok dengan correctUids, gunakan semua user owner yang ada
+  const finalOwners = validOwners.length > 0 
+    ? validOwners 
+    : usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+  console.log(`Ditemukan ${finalOwners.length} owners yang valid untuk dipetakan.`);
+
+  // Inisialisasi Storage Bucket
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'sewainaja-b4834.firebasestorage.app';
+  console.log(`Menggunakan Storage Bucket: ${bucketName}`);
+  const bucket = admin.storage().bucket(bucketName);
 
   const batch = db.batch();
   let count = 0;
 
   for (const item of mockItems) {
-    const randomOwner = owners[Math.floor(Math.random() * owners.length)];
+    const randomOwner = finalOwners[Math.floor(Math.random() * finalOwners.length)];
     const docRef = db.collection('items').doc();
+    const itemId = docRef.id;
 
     const isBlocked = item.status === 'blocked';
+    const photos: string[] = [];
+    const timestamp = Date.now();
+
+    // Salin foto dummy di Firebase Storage ke path terstruktur:
+    // items/{itemId}/photos/{timestamp}_{index}.jpg
+    if (item.imageMapping) {
+      for (let i = 0; i < item.imageMapping.length; i++) {
+        const sourceFilename = item.imageMapping[i];
+        const sourcePath = `items/dummy_assets/${sourceFilename}`;
+        const destPath = `items/${itemId}/photos/${timestamp}_${i + 1}.jpg`;
+
+        const sourceFile = bucket.file(sourcePath);
+        const destFile = bucket.file(destPath);
+
+        try {
+          // Cek apakah file sumber ada
+          const [exists] = await sourceFile.exists();
+          if (exists) {
+            console.log(`Copying storage file: ${sourcePath} -> ${destPath}`);
+            await sourceFile.copy(destFile);
+
+            // Tentukan contentType agar browser bisa me-render
+            const mimeType = sourceFilename.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            await destFile.setMetadata({
+              contentType: mimeType,
+              metadata: {
+                source: 'seeder-script',
+                itemId: itemId,
+              }
+            });
+
+            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(destPath)}?alt=media`;
+            photos.push(downloadUrl);
+          } else {
+            console.warn(`⚠ File sumber tidak ditemukan di storage: ${sourcePath}`);
+          }
+        } catch (copyErr) {
+          console.error(`✗ Gagal menyalin file ${sourcePath} ke ${destPath}:`, copyErr);
+        }
+      }
+    }
+
+    const { imageMapping, ...cleanItem } = item as any;
+
     const itemData = {
-      ...item,
-      id: docRef.id,
+      ...cleanItem,
+      id: itemId,
       ownerId: randomOwner.id,
-      ownerName: randomOwner.name,
-      ownerRating: randomOwner.avgRatingAsOwner || 0,
+      ownerName: randomOwner.name || 'Owner SewaIn',
+      ownerRating: randomOwner.avgRatingAsOwner || 4.7,
       blockedReason: isBlocked ? 'Melanggar aturan platform (Barang terindikasi palsu)' : null,
       blockedBy: isBlocked ? 'admin-system' : null,
       blockedAt: isBlocked ? admin.firestore.FieldValue.serverTimestamp() : null,
+      photos: photos,
       address: {
         ...item.address,
         coordinat: new admin.firestore.GeoPoint(
@@ -316,15 +368,12 @@ async function seedItems() {
     batch.set(docRef, itemData);
     count++;
     console.log(
-      `Menambahkan barang: ${itemData.name} (${itemData.categoryName}) - ${itemData.status} (Owner: ${itemData.ownerName})`
+      `Menambahkan barang ke Firestore: ${itemData.name} (${itemData.categoryName}) - ID: ${itemId} dengan ${photos.length} foto`
     );
   }
 
   await batch.commit();
-
-  console.log('\nSEEDING BARANG BERHASIL: ' + count + ' data');
-  console.log('💡 Catatan: Silakan tambahkan foto barang melalui Firebase Storage');
-  console.log('   Path: items/{itemId}/photos/');
+  console.log(`\n✓ SEEDING BARANG BERHASIL: ${count} data ditambahkan ke Firestore.`);
 }
 
 seedItems().catch((err) => {

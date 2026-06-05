@@ -176,9 +176,10 @@ authRouter.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const selfiePhotoUrl = typeof req.body?.selfiePhotoUrl === 'string' ? req.body.selfiePhotoUrl.trim() : '';
+    const ktpPhotoUrl = typeof req.body?.ktpPhotoUrl === 'string' ? req.body.ktpPhotoUrl.trim() : '';
 
-    if (!selfiePhotoUrl) {
-      return fail(res, ERROR_CODES.INVALID_INPUT, 'Foto selfie wajib diunggah', 400);
+    if (!selfiePhotoUrl || !ktpPhotoUrl) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Foto selfie dan KTP wajib diunggah', 400);
     }
 
     const uid = req.user?.uid;
@@ -191,6 +192,7 @@ authRouter.post(
 
     await ref.update({
       selfiePhotoUrl,
+      ktpPhotoUrl,
       status: 'pending',
       updatedAt: now(),
     });
@@ -203,10 +205,10 @@ authRouter.post(
       userId: 'admin',
       type: 'request',
       title: 'Pengunggahan Berkas KYC',
-      body: `User ${userName} telah mengunggah foto selfie untuk verifikasi akun.`,
+      body: `User ${userName} telah mengunggah berkas KTP dan selfie untuk verifikasi akun.`,
     });
 
-    return ok(res, { selfiePhotoUrl, status: 'pending' }, 'Foto selfie berhasil diunggah');
+    return ok(res, { selfiePhotoUrl, ktpPhotoUrl, status: 'pending' }, 'Berkas KYC berhasil diunggah');
   }),
 );
 

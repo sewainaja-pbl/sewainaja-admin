@@ -198,7 +198,8 @@ service cloud.firestore {
     match /user_reports/{reportId} {
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.reporterId;
       allow read: if isAdmin();
-      allow update, delete: if false;
+      allow update: if isAdmin();
+      allow delete: if false;
     }
   }
 }
