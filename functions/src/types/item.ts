@@ -16,6 +16,8 @@ export interface ItemDoc {
   name: string;
   description: string;
   pricePerHour: number;
+  price?: number;
+  priceUnit?: string;
   estimatedValue: number;
   status: ItemStatus;
   condition: ItemCondition;

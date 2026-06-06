@@ -127,6 +127,7 @@ paymentsRouter.post(
         status: finalStatus,
         midtransPaymentType: paymentType,
         paidAt: isSuccess ? now() : null,
+        escrowStatus: isSuccess ? 'held' : null,
       });
 
       // OPTIONAL: If PAID, update logic could update Transaction Status to "paid" too or just leave it.
@@ -174,7 +175,8 @@ paymentsRouter.post(
       midtransPaymentType: null,
       paymentProofUrl: null, // optional if provided in body
       paidAt: now(),
-      createdAt: now()
+      createdAt: now(),
+      escrowStatus: 'held'
     };
 
     const docRef = await db.collection('payments').add(paymentData);

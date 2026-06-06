@@ -9,7 +9,10 @@ vi.mock('firebase-admin', () => {
       initializeApp: vi.fn(),
       auth: () => mockFirebaseAdmin.auth,
       firestore: Object.assign(() => mockFirebaseAdmin.firestore(), {
-        FieldValue: { serverTimestamp: () => new Date('2025-01-01T00:00:00.000Z') },
+        FieldValue: { 
+          serverTimestamp: () => new Date('2025-01-01T00:00:00.000Z'),
+          increment: (val: number) => val,
+        },
       }),
     },
   };

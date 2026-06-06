@@ -1,5 +1,6 @@
 export type PaymentMethod = 'midtrans' | 'cash' | 'manual_transfer';
 export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'failed';
+export type EscrowStatus = 'held' | 'released' | 'refunded' | 'disputed_locked';
 
 export interface PaymentDoc {
   id: string;
@@ -12,4 +13,5 @@ export interface PaymentDoc {
   paymentProofUrl: string | null;
   paidAt: unknown | null;
   createdAt: unknown;
+  escrowStatus?: EscrowStatus | null;
 }

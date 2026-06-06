@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import admin from 'firebase-admin';
 import { db, now } from '../lib/firebase-admin';
 import { fail, ok } from '../lib/http';
 import { ERROR_CODES } from '../errors';
@@ -71,10 +72,14 @@ adminDisputesRouter.patch(
   asyncHandler(async (req, res) => {
     const uid = req.user!.uid;
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { resolutionNote } = req.body;
+    const { resolutionNote, decision } = req.body;
 
     if (!resolutionNote || typeof resolutionNote !== 'string') {
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Catatan resolusi wajib diisi', 400);
+    }
+
+    if (decision && !['release_to_owner', 'refund_to_renter'].includes(decision)) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Keputusan resolusi tidak valid', 400);
     }
 
     const docRef = db.collection('disputes').doc(String(id));
@@ -84,17 +89,68 @@ adminDisputesRouter.patch(
       return fail(res, ERROR_CODES.NOT_FOUND, 'Sengketa tidak ditemukan', 404);
     }
 
-    if (snapshot.data()?.status === 'resolved' || snapshot.data()?.status === 'closed') {
+    const dispute = snapshot.data();
+    if (dispute?.status === 'resolved' || dispute?.status === 'closed') {
       return fail(res, ERROR_CODES.CONFLICT, 'Sengketa sudah diselesaikan', 409);
     }
 
-    await docRef.update({
+    const transId = dispute?.transactionId;
+    const transRef = db.collection('transactions').doc(transId);
+    const transSnap = await transRef.get();
+    const trans = transSnap.data();
+
+    const batch = db.batch();
+
+    batch.update(docRef, {
       status: 'resolved',
       resolutionNote: resolutionNote.trim(),
       resolvedBy: uid,
       resolvedAt: now(),
       updatedAt: now()
     });
+
+    if (decision) {
+      // Update transaction status to completed (if released) or cancelled (if refunded)
+      batch.update(transRef, {
+        status: decision === 'refund_to_renter' ? 'cancelled' : 'completed',
+        updatedAt: now()
+      });
+
+      // Find disputed_locked payments for this transaction
+      const paymentsSnap = await db.collection('payments')
+        .where('transactionId', '==', transId)
+        .where('status', '==', 'paid')
+        .get();
+
+      let totalAmount = 0;
+      for (const pDoc of paymentsSnap.docs) {
+        const pData = pDoc.data();
+        const newEscrowStatus = decision === 'refund_to_renter' ? 'refunded' : 'released';
+        batch.update(pDoc.ref, {
+          escrowStatus: newEscrowStatus,
+          updatedAt: now()
+        });
+        totalAmount += pData.amount || 0;
+      }
+
+      if (totalAmount > 0 && trans) {
+        if (decision === 'refund_to_renter') {
+          const renterRef = db.collection('users').doc(trans.renterId);
+          batch.update(renterRef, {
+            walletBalance: admin.firestore.FieldValue.increment(totalAmount),
+            updatedAt: now()
+          });
+        } else if (decision === 'release_to_owner') {
+          const ownerRef = db.collection('users').doc(trans.ownerId);
+          batch.update(ownerRef, {
+            walletBalance: admin.firestore.FieldValue.increment(totalAmount),
+            updatedAt: now()
+          });
+        }
+      }
+    }
+
+    await batch.commit();
 
     const updated = await docRef.get();
     return ok(res, { id, ...updated.data() }, 'Sengketa berhasil diselesaikan');
