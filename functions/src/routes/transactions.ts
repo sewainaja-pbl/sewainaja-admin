@@ -218,7 +218,9 @@ transactionsRouter.post(
 
     await batch.commit();
 
-    return ok(res, { id: transRef.id, ...transData }, 'Request sewa berhasil diajukan');
+    const createdSnap = await transRef.get();
+
+    return ok(res, { id: transRef.id, ...createdSnap.data() }, 'Request sewa berhasil diajukan');
   }),
 );
 
@@ -378,13 +380,40 @@ transactionsRouter.post(
       return fail(res, ERROR_CODES.CONFLICT, 'Token QR Code sudah kadaluwarsa. Minta penyewa me-regenerate QR.', 409);
     }
 
-    await docRef.update({
+    const batch = db.batch();
+
+    batch.update(docRef, {
       status: 'completed',
       checkoutAt: now(),
       qrCheckoutUsedAt: now(),
       isOverdue: false, // disable overdue tracking
       updatedAt: now()
     });
+
+    // Find payments associated with this transaction
+    const paymentsSnap = await db.collection('payments')
+      .where('transactionId', '==', String(id))
+      .where('status', '==', 'paid')
+      .get();
+
+    let totalAmountReleased = 0;
+    for (const pDoc of paymentsSnap.docs) {
+      batch.update(pDoc.ref, {
+        escrowStatus: 'released',
+        updatedAt: now()
+      });
+      totalAmountReleased += pDoc.data().amount || 0;
+    }
+
+    if (totalAmountReleased > 0) {
+      const ownerRef = db.collection('users').doc(trans.ownerId);
+      batch.update(ownerRef, {
+        walletBalance: admin.firestore.FieldValue.increment(totalAmountReleased),
+        updatedAt: now()
+      });
+    }
+
+    await batch.commit();
 
     return ok(res, { id, status: 'completed' }, 'Check-out berhasil. Barang telah dikembalikan.');
   }),

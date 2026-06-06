@@ -119,7 +119,9 @@ addressesRouter.post(
       await newDocRef.set(addressData);
     }
 
-    return ok(res, { id: newDocRef.id, ...addressData }, 'Alamat berhasil ditambahkan');
+    const createdSnap = await newDocRef.get();
+
+    return ok(res, { id: newDocRef.id, ...createdSnap.data() }, 'Alamat berhasil ditambahkan');
   }),
 );
 

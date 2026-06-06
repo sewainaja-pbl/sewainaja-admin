@@ -19,10 +19,14 @@ disputesRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const uid = req.user!.uid;
-    const { transactionId, description } = req.body;
+    const { transactionId, description, category, evidenceUrl } = req.body;
 
-    if (!transactionId || !description) {
+    if (!transactionId || !description || !category) {
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Data klaim sengketa tidak lengkap', 400);
+    }
+
+    if (!['handover_rejection', 'ongoing_damage', 'checkout_damage'].includes(category)) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Kategori sengketa tidak valid', 400);
     }
 
     const transRef = db.collection('transactions').doc(String(transactionId));
@@ -35,14 +39,6 @@ disputesRouter.post(
     const trans = transSnap.data();
     if (trans?.ownerId !== uid && trans?.renterId !== uid) {
       return fail(res, ERROR_CODES.FORBIDDEN, 'Anda tidak berhak membuka sengketa pada transaksi ini', 403);
-    }
-
-    // Validate that checkout just happened (within last 12 hours theoretically)
-    // or generally allow for safety. We'll just ensure it has been completed.
-    if (trans?.status !== 'completed') {
-      // Technically disputes can be opened if something goes wrong mid-rent too?
-      // Docs step 9 says: "ajukan klaim kerusakan maksimal 12 jam setelah checkoutAt"
-      // We allow.
     }
 
     // Denormalization info
@@ -60,6 +56,8 @@ disputesRouter.post(
       transactionId: String(transactionId),
       reportedBy: uid,
       description: String(description).trim(),
+      category: category as any,
+      evidenceUrl: evidenceUrl || null,
       status: 'open',
       resolutionNote: null,
       resolvedBy: null,
@@ -77,18 +75,33 @@ disputesRouter.post(
     // Also set transaction status to disputed
     batch.update(transRef, { status: 'disputed', updatedAt: now() });
 
+    // Lock payments in escrow
+    const paymentsSnap = await db.collection('payments')
+      .where('transactionId', '==', String(transactionId))
+      .where('status', '==', 'paid')
+      .get();
+
+    for (const pDoc of paymentsSnap.docs) {
+      batch.update(pDoc.ref, {
+        escrowStatus: 'disputed_locked',
+        updatedAt: now()
+      });
+    }
+
     await batch.commit();
+
+    const createdSnap = await disputeRef.get();
 
     // Kirim notifikasi ke admin
     await createNotification({
       userId: 'admin',
       type: 'dispute',
       title: 'Sengketa Transaksi Baru',
-      body: `User ${reporterName} mengajukan klaim kerusakan untuk transaksi ${transactionId}.`,
+      body: `User ${reporterName} mengajukan klaim sengketa (${category}) untuk transaksi ${transactionId}.`,
       transactionId: String(transactionId),
     });
 
-    return ok(res, { id: disputeRef.id, ...disputeData }, 'Klaim sengketa berhasil diajukan, admin akan segera meninjau.');
+    return ok(res, { id: disputeRef.id, ...createdSnap.data() }, 'Klaim sengketa berhasil diajukan, admin akan segera meninjau.');
   }),
 );
 

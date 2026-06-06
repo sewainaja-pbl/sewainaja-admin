@@ -159,11 +159,23 @@ itemsRouter.post(
   asyncHandler(async (req, res) => {
     const uid = req.user!.uid;
     const { 
-      categoryId, name, description, pricePerHour, 
-      estimatedValue, condition, addressId 
+      categoryId, name, description, pricePerHour: reqPricePerHour, 
+      price, priceUnit, estimatedValue, condition, addressId 
     } = req.body;
 
-    if (!categoryId || !name || typeof pricePerHour !== 'number' || typeof estimatedValue !== 'number' || !isValidCondition(condition) || !addressId) {
+    let computedPricePerHour = reqPricePerHour;
+    if (typeof price === 'number') {
+      const unit = String(priceUnit || 'Hari').trim().toLowerCase();
+      if (unit === 'jam') {
+        computedPricePerHour = price;
+      } else if (unit === 'minggu') {
+        computedPricePerHour = price / 168;
+      } else {
+        computedPricePerHour = price / 24;
+      }
+    }
+
+    if (!categoryId || !name || typeof computedPricePerHour !== 'number' || typeof estimatedValue !== 'number' || !isValidCondition(condition) || !addressId) {
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Data barang tidak lengkap atau tidak valid', 400);
     }
 
@@ -200,7 +212,9 @@ itemsRouter.post(
       categoryId: String(categoryId),
       name: String(name).trim(),
       description: String(description || '').trim(),
-      pricePerHour,
+      pricePerHour: computedPricePerHour,
+      price: typeof price === 'number' ? price : computedPricePerHour * 24,
+      priceUnit: priceUnit || 'Hari',
       estimatedValue,
       status: 'available',
       condition,
@@ -222,8 +236,9 @@ itemsRouter.post(
     };
 
     const docRef = await db.collection('items').add(itemData);
+    const createdSnap = await docRef.get();
 
-    return ok(res, { id: docRef.id, ...itemData }, 'Barang berhasil ditambahkan');
+    return ok(res, { id: docRef.id, ...createdSnap.data() }, 'Barang berhasil ditambahkan');
   }),
 );
 
@@ -237,7 +252,7 @@ itemsRouter.patch(
   asyncHandler(async (req, res) => {
     const uid = req.user!.uid;
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { name, description, pricePerHour, estimatedValue, condition, status } = req.body;
+    const { name, description, pricePerHour: reqPricePerHour, price, priceUnit, estimatedValue, condition, status } = req.body;
 
     const docRef = db.collection('items').doc(String(id));
     const snapshot = await docRef.get();
@@ -259,7 +274,39 @@ itemsRouter.patch(
 
     if (name !== undefined) updates.name = String(name).trim();
     if (description !== undefined) updates.description = String(description).trim();
-    if (typeof pricePerHour === 'number') updates.pricePerHour = pricePerHour;
+    
+    let computedPricePerHour = reqPricePerHour;
+    if (price !== undefined && typeof price === 'number') {
+      updates.price = price;
+      const currentUnit = priceUnit !== undefined ? priceUnit : (itemData.priceUnit || 'Hari');
+      updates.priceUnit = currentUnit;
+      const unit = String(currentUnit).trim().toLowerCase();
+      if (unit === 'jam') {
+        computedPricePerHour = price;
+      } else if (unit === 'minggu') {
+        computedPricePerHour = price / 168;
+      } else {
+        computedPricePerHour = price / 24;
+      }
+    } else if (priceUnit !== undefined && typeof priceUnit === 'string') {
+      updates.priceUnit = priceUnit;
+      const currentPrice = itemData.price !== undefined ? itemData.price : (itemData.pricePerHour * 24);
+      const unit = String(priceUnit).trim().toLowerCase();
+      if (unit === 'jam') {
+        computedPricePerHour = currentPrice;
+      } else if (unit === 'minggu') {
+        computedPricePerHour = currentPrice / 168;
+      } else {
+        computedPricePerHour = currentPrice / 24;
+      }
+    }
+
+    if (computedPricePerHour !== undefined && typeof computedPricePerHour === 'number') {
+      updates.pricePerHour = computedPricePerHour;
+    } else if (reqPricePerHour !== undefined && typeof reqPricePerHour === 'number') {
+      updates.pricePerHour = reqPricePerHour;
+    }
+
     if (typeof estimatedValue === 'number') updates.estimatedValue = estimatedValue;
     if (condition !== undefined && isValidCondition(condition)) updates.condition = condition;
     if (status !== undefined && isValidStatus(status)) updates.status = status;

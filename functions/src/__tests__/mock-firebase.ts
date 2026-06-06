@@ -23,6 +23,9 @@ type StoredDispute = {
 
 const users = new Map<string, StoredUser>();
 const disputes = new Map<string, StoredDispute>();
+const transactions = new Map<string, any>();
+const payments = new Map<string, any>();
+
 const authUsersByEmail = new Map<
   string,
   {
@@ -98,22 +101,57 @@ const seedDispute = (value: Partial<StoredDispute> & { id: string }) => {
     updatedAt: value.updatedAt,
   };
   disputes.set(stored.id, stored);
+
+  // Auto seed a default transaction for this transactionId if not present
+  if (!transactions.has(stored.transactionId)) {
+    transactions.set(stored.transactionId, {
+      id: stored.transactionId,
+      ownerId: 'uid-owner-seeded',
+      renterId: stored.reportedBy,
+      status: 'disputed',
+      totalPrice: 100000,
+    });
+  }
+
+  // Auto seed a payment for this transactionId if not present
+  if (payments.size === 0) {
+    payments.set('p-1', {
+      id: 'p-1',
+      transactionId: stored.transactionId,
+      amount: 100000,
+      status: 'paid',
+      escrowStatus: 'disputed_locked',
+    });
+  }
+
   return stored;
 };
 
 const reset = () => {
   users.clear();
   disputes.clear();
+  transactions.clear();
+  payments.clear();
   authUsersByEmail.clear();
   tokenClaims.clear();
 };
 
 const collection = (name: string) => {
-  if (name !== 'users' && name !== 'disputes') {
+  if (name !== 'users' && name !== 'disputes' && name !== 'transactions' && name !== 'payments') {
     throw new Error(`Unexpected collection: ${name}`);
   }
 
-  const store = name === 'users' ? users : disputes;
+  let store: Map<string, any>;
+  if (name === 'users') {
+    store = users;
+  } else if (name === 'disputes') {
+    store = disputes;
+  } else if (name === 'transactions') {
+    store = transactions;
+  } else {
+    store = payments;
+  }
+
   const toMillis = (value: unknown) => {
     if (value instanceof Date) return value.getTime();
     if (typeof value === 'string') return new Date(value).getTime();
@@ -123,10 +161,47 @@ const collection = (name: string) => {
     return new Date(value as never).getTime();
   };
 
+  const where = (field: string, op: string, value: unknown) => {
+    const getFilteredDocs = () => {
+      let docs = [...store.values()];
+      if (field === 'status') {
+        docs = docs.filter((doc) => doc.status === value);
+      } else if (field === 'transactionId') {
+        docs = docs.filter((doc) => doc.transactionId === value);
+      }
+      return docs.map((doc) => ({
+        id: doc.id,
+        ref: {
+          update: async (patch: any) => {
+            const current = store.get(doc.id);
+            store.set(doc.id, { ...current, ...patch });
+          },
+        },
+        data: () => doc,
+      }));
+    };
+
+    const query = {
+      where: (f2: string, op2: string, val2: unknown) => where(f2, op2, val2),
+      orderBy: (_field: string, _direction: string) => query,
+      limit: (count: number) => ({
+        get: async () => {
+          const docs = getFilteredDocs().slice(0, count);
+          return { docs };
+        },
+      }),
+      get: async () => {
+        const docs = getFilteredDocs();
+        return { docs };
+      },
+    };
+    return query;
+  };
+
   return {
     doc: (id: string) => ({
-      set: async (value: StoredUser | StoredDispute) => {
-        store.set(id, { ...value, id } as StoredUser & StoredDispute);
+      set: async (value: any) => {
+        store.set(id, { ...value, id });
       },
       get: async () => {
         const value = store.get(id);
@@ -135,40 +210,15 @@ const collection = (name: string) => {
           data: () => value ?? null,
         };
       },
-      update: async (patch: Partial<StoredUser> | Partial<StoredDispute>) => {
+      update: async (patch: any) => {
         const current = store.get(id);
         if (!current) {
-          throw new Error('missing user');
+          throw new Error('missing document');
         }
-        store.set(id, { ...current, ...patch } as StoredUser & StoredDispute);
+        store.set(id, { ...current, ...patch });
       },
     }),
-    where: (field: string, op: string, value: unknown) => {
-      if (name !== 'users' || field !== 'status' || op !== '==') {
-        throw new Error(`Unexpected query: ${name}.${field} ${op}`);
-      }
-
-      const query = {
-        orderBy: (_field: string, _direction: string) => query,
-        limit: (count: number) => ({
-          get: async () => {
-            const docs = [...users.values()]
-              .filter((user) => user.status === value)
-              .sort((a, b) => {
-                const left = new Date(a.createdAt as Date).getTime();
-                const right = new Date(b.createdAt as Date).getTime();
-                return left - right;
-              })
-              .slice(0, count)
-              .map((doc) => ({ data: () => doc }));
-
-            return { docs };
-          },
-        }),
-      };
-
-      return query;
-    },
+    where,
     orderBy: (field: string, direction: string) => {
       const query = {
         get: async () => {
@@ -225,10 +275,32 @@ export const mockFirebaseAdmin = {
   },
   firestore: () => ({
     collection,
+    batch: () => {
+      const operations: Array<() => Promise<void>> = [];
+      return {
+        set: (ref: any, data: any) => {
+          operations.push(async () => {
+            await ref.set(data);
+          });
+        },
+        update: (ref: any, data: any) => {
+          operations.push(async () => {
+            await ref.update(data);
+          });
+        },
+        commit: async () => {
+          for (const op of operations) {
+            await op();
+          }
+        },
+      };
+    },
   }),
   __state: {
     users,
     disputes,
+    transactions,
+    payments,
     authUsersByEmail,
     tokenClaims,
     seedAuthUser,
