@@ -1,6 +1,8 @@
 import cors from 'cors';
+import admin from 'firebase-admin';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { onRequest } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { ERROR_CODES } from './errors';
 import { fail } from './lib/http';
 import { authRouter } from './routes/auth';
@@ -52,4 +54,100 @@ app.use(
 );
 
 export const api = onRequest({ cors: true, invoker: 'public' }, app);
+
+// Firestore trigger: kirim FCM push notification saat dokumen notifications baru dibuat oleh client.
+export const onNotificationCreated = onDocumentCreated(
+  'notifications/{notificationId}',
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const data = snap.data() as Record<string, unknown>;
+
+    // Jika isSent sudah true (dibuat oleh backend langsung), skip.
+    if (data['isSent'] === true) return;
+    // Jika scheduledAt ada (penjadwalan), skip — biarkan proses scheduler yang handle.
+    if (data['scheduledAt'] != null) return;
+
+    const { db, now } = await import('./lib/firebase-admin');
+
+    const userId = data['userId'] as string | undefined;
+    if (!userId) return;
+
+    // Ambil FCM token pengguna
+    const userSnap = await db.collection('users').doc(userId).get();
+    const fcmToken = ((userSnap.data() as Record<string, unknown> | undefined)?.['fcmToken'] as string | undefined)?.trim() ?? '';
+
+    if (!fcmToken) {
+      await snap.ref.update({
+        providerStatus: 'skipped',
+        failureReason: 'FCM_TOKEN_EMPTY',
+        updatedAt: now(),
+      });
+      return;
+    }
+
+    const title = (data['title'] as string | undefined) ?? 'Notifikasi baru';
+    const body = (data['body'] as string | undefined) ?? 'Ada pembaruan baru.';
+    const notificationId = snap.id;
+
+    const message = {
+      token: fcmToken,
+      notification: { title, body },
+      data: {
+        notificationId,
+        type: (data['type'] as string | undefined) ?? '',
+        class: (data['class'] as string | undefined) ?? 'transactional',
+        transactionId: (data['transactionId'] as string | undefined) ?? '',
+        deeplink: (data['deeplink'] as string | undefined) ?? '',
+        imageUrl: (data['imageUrl'] as string | undefined) ?? '',
+        idempotencyKey: (data['idempotencyKey'] as string | undefined) ?? '',
+      },
+      android: {
+        priority: 'high' as const,
+        notification: { channelId: 'default' },
+      },
+      apns: {
+        headers: { 'apns-priority': '10' },
+        payload: { aps: { sound: 'default' } },
+      },
+    };
+
+    try {
+      const pushMessageId = await admin.messaging().send(message);
+      await snap.ref.update({
+        isSent: true,
+        providerStatus: 'success',
+        failureReason: null,
+        pushMessageId,
+        sentAt: now(),
+        updatedAt: now(),
+      });
+    } catch (error: unknown) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : 'UNKNOWN_SEND_ERROR';
+      await snap.ref.update({
+        providerStatus: 'failed',
+        failureReason: code,
+        updatedAt: now(),
+      });
+      // Hapus token yang tidak valid
+      const INVALID = new Set([
+        'messaging/invalid-registration-token',
+        'messaging/registration-token-not-registered',
+      ]);
+      if (INVALID.has(code)) {
+        await db.collection('users').doc(userId).update({
+          fcmToken: '',
+          lastTokenErrorAt: now(),
+          updatedAt: now(),
+        });
+      }
+      console.error('[onNotificationCreated] FCM send failed:', error);
+    }
+  },
+);
+
 export default api;
