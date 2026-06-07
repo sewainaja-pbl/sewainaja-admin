@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import admin from 'firebase-admin';
 import { auth, db, now } from '../lib/firebase-admin';
 import { fail, ok } from '../lib/http';
 import { ERROR_CODES } from '../errors';
@@ -9,6 +10,81 @@ import { asyncHandler } from '../lib/async-handler';
 import { createNotification } from '../lib/notifications';
 
 export const authRouter = Router();
+
+/**
+ * Helper to process lazy wallet release for a user.
+ * It searches for all payments in 'completed_held' status that have reached their release time
+ * and belong to transactions where this user is the owner, and then releases them to their walletBalance.
+ */
+export const processLazyWalletRelease = async (userId: string) => {
+  try {
+    const nowTimestamp = new Date();
+    
+    // Get all completed_held payments that are ready to release
+    const pendingPaymentsSnap = await db.collection('payments')
+      .where('status', '==', 'paid')
+      .where('escrowStatus', '==', 'completed_held')
+      .get();
+      
+    if (pendingPaymentsSnap.empty) return;
+    
+    const batch = db.batch();
+    let totalReleasedAmount = 0;
+    let hasUpdates = false;
+    
+    const nowTime = nowTimestamp.getTime();
+    
+    for (const pDoc of pendingPaymentsSnap.docs) {
+      const pData = pDoc.data();
+      const transId = pData.transactionId;
+      
+      if (!transId) continue;
+      
+      // Perform manual filtering for compatibility with mock database in tests
+      if (pData.escrowStatus !== 'completed_held') continue;
+      
+      let releaseTime = 0;
+      if (pData.releaseAvailableAt instanceof Date) {
+        releaseTime = pData.releaseAvailableAt.getTime();
+      } else if (pData.releaseAvailableAt && typeof pData.releaseAvailableAt === 'object') {
+        const seconds = (pData.releaseAvailableAt as any).seconds ?? (pData.releaseAvailableAt as any)._seconds;
+        if (typeof seconds === 'number') {
+          releaseTime = seconds * 1000;
+        } else {
+          releaseTime = new Date(pData.releaseAvailableAt as any).getTime();
+        }
+      } else if (typeof pData.releaseAvailableAt === 'number') {
+        releaseTime = pData.releaseAvailableAt;
+      } else if (typeof pData.releaseAvailableAt === 'string') {
+        releaseTime = new Date(pData.releaseAvailableAt).getTime();
+      }
+      
+      if (releaseTime > nowTime) continue;
+      
+      const transSnap = await db.collection('transactions').doc(transId).get();
+      if (transSnap.exists && transSnap.data()?.ownerId === userId) {
+        batch.update(pDoc.ref, {
+          escrowStatus: 'released',
+          updatedAt: now()
+        });
+        totalReleasedAmount += pData.amount || 0;
+        hasUpdates = true;
+      }
+    }
+    
+    if (hasUpdates && totalReleasedAmount > 0) {
+      const ownerRef = db.collection('users').doc(userId);
+      batch.update(ownerRef, {
+        walletBalance: admin.firestore.FieldValue.increment(totalReleasedAmount),
+        updatedAt: now()
+      });
+      await batch.commit();
+      console.log(`Lazily released Rp ${totalReleasedAmount} to user ${userId}`);
+    }
+  } catch (error) {
+    console.error('Error in processLazyWalletRelease:', error);
+  }
+};
 
 const toBoolean = (value: unknown) => value === true;
 
@@ -161,6 +237,11 @@ authRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const uid = req.user?.uid;
+
+    if (uid) {
+      await processLazyWalletRelease(uid);
+    }
+
     const snapshot = await db.collection('users').doc(uid ?? '').get();
 
     if (!snapshot.exists) {

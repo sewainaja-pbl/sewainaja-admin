@@ -176,7 +176,7 @@ paymentsRouter.post(
       paymentProofUrl: null, // optional if provided in body
       paidAt: now(),
       createdAt: now(),
-      escrowStatus: 'held'
+      escrowStatus: method === 'manual_transfer' ? 'held' : null
     };
 
     const docRef = await db.collection('payments').add(paymentData);

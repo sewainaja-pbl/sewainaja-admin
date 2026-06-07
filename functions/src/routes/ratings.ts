@@ -62,6 +62,25 @@ ratingsRouter.post(
       return fail(res, ERROR_CODES.FORBIDDEN, 'Anda tidak terdaftar di transaksi ini', 403);
     }
 
+    // Enforce transaction status to completed
+    if (trans?.status !== 'completed') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Hanya transaksi yang sudah selesai (completed) yang dapat diberikan rating', 409);
+    }
+
+    // Enforce minimum rental duration of 1 hour to prevent rating farming (Sybil attacks)
+    const checkin = trans?.checkinAt;
+    const checkout = trans?.checkoutAt;
+    if (checkin && checkout) {
+      const checkinDate = (checkin as any).toDate ? (checkin as any).toDate() : new Date(checkin);
+      const checkoutDate = (checkout as any).toDate ? (checkout as any).toDate() : new Date(checkout);
+      const durationMs = checkoutDate.getTime() - checkinDate.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      
+      if (durationHours < 1.0) {
+        return fail(res, ERROR_CODES.CONFLICT, 'Transaksi harus berlangsung minimal 1 jam untuk dapat diberikan rating', 409);
+      }
+    }
+
     // Check already voted
     const existing = await db.collection('ratings')
       .where('transactionId', '==', transactionId)

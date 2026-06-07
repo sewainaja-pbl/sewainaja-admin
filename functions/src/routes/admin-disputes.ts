@@ -120,6 +120,7 @@ adminDisputesRouter.patch(
       const paymentsSnap = await db.collection('payments')
         .where('transactionId', '==', transId)
         .where('status', '==', 'paid')
+        .where('escrowStatus', '==', 'disputed_locked')
         .get();
 
       let totalAmount = 0;

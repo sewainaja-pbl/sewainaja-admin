@@ -56,7 +56,16 @@ transactionsRouter.get(
     }
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
-    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const transactions = await Promise.all(snapshot.docs.map(async (doc) => {
+      const transData = doc.data();
+      const detailsSnap = await doc.ref.collection('transaction_details').limit(1).get();
+      const firstDetail = detailsSnap.docs.length > 0 ? detailsSnap.docs[0].data() : null;
+      return {
+        id: doc.id,
+        ...transData,
+        firstDetail
+      };
+    }));
 
     return ok(res, transactions, 'Daftar transaksi berhasil diambil');
   }),
@@ -282,12 +291,40 @@ transactionsRouter.patch(
       return fail(res, ERROR_CODES.CONFLICT, 'Transaksi yang sudah berjalan atau selesai tidak bisa dibatalkan', 409);
     }
 
-    await docRef.update({
+    const batch = db.batch();
+    
+    batch.update(docRef, {
       status: 'cancelled',
       updatedAt: now()
     });
 
-    return ok(res, { id, status: 'cancelled' }, 'Transaksi berhasil dibatalkan');
+    // Cari pembayaran escrow yang bertipe 'held' untuk di-refund otomatis ke wallet penyewa
+    const paymentsSnap = await db.collection('payments')
+      .where('transactionId', '==', String(id))
+      .where('status', '==', 'paid')
+      .where('escrowStatus', '==', 'held')
+      .get();
+
+    let refundAmount = 0;
+    for (const pDoc of paymentsSnap.docs) {
+      batch.update(pDoc.ref, {
+        escrowStatus: 'refunded',
+        updatedAt: now()
+      });
+      refundAmount += pDoc.data().amount || 0;
+    }
+
+    if (refundAmount > 0) {
+      const renterRef = db.collection('users').doc(trans.renterId);
+      batch.update(renterRef, {
+        walletBalance: admin.firestore.FieldValue.increment(refundAmount),
+        updatedAt: now()
+      });
+    }
+
+    await batch.commit();
+
+    return ok(res, { id, status: 'cancelled' }, 'Transaksi berhasil dibatalkan dan dana di-refund ke wallet penyewa.');
   }),
 );
 
@@ -390,25 +427,20 @@ transactionsRouter.post(
       updatedAt: now()
     });
 
-    // Find payments associated with this transaction
+    // Find payments associated with this transaction that are held in escrow (ignoring cash payments)
     const paymentsSnap = await db.collection('payments')
       .where('transactionId', '==', String(id))
       .where('status', '==', 'paid')
+      .where('escrowStatus', '==', 'held')
       .get();
 
-    let totalAmountReleased = 0;
+    const ESCROW_HOLD_HOURS = 24; // Untuk keperluan testing/demo, nilai ini bisa diubah (misal: 0.033 untuk ~2 menit)
+    const releaseAvailableAt = getExpiryDate(ESCROW_HOLD_HOURS);
+
     for (const pDoc of paymentsSnap.docs) {
       batch.update(pDoc.ref, {
-        escrowStatus: 'released',
-        updatedAt: now()
-      });
-      totalAmountReleased += pDoc.data().amount || 0;
-    }
-
-    if (totalAmountReleased > 0) {
-      const ownerRef = db.collection('users').doc(trans.ownerId);
-      batch.update(ownerRef, {
-        walletBalance: admin.firestore.FieldValue.increment(totalAmountReleased),
+        escrowStatus: 'completed_held',
+        releaseAvailableAt,
         updatedAt: now()
       });
     }

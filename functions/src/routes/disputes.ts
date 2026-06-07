@@ -82,10 +82,13 @@ disputesRouter.post(
       .get();
 
     for (const pDoc of paymentsSnap.docs) {
-      batch.update(pDoc.ref, {
-        escrowStatus: 'disputed_locked',
-        updatedAt: now()
-      });
+      const pData = pDoc.data();
+      if (pData.escrowStatus === 'held' || pData.escrowStatus === 'completed_held') {
+        batch.update(pDoc.ref, {
+          escrowStatus: 'disputed_locked',
+          updatedAt: now()
+        });
+      }
     }
 
     await batch.commit();
