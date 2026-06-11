@@ -5,6 +5,7 @@ import { ERROR_CODES } from '../errors';
 import { requireAuth } from '../middleware/require-auth';
 import { asyncHandler } from '../lib/async-handler';
 import type { RatingDoc } from '../types/rating';
+import { createNotification } from '../lib/notifications';
 
 export const ratingsRouter = Router();
 
@@ -112,6 +113,28 @@ ratingsRouter.post(
 
     // Update Cache asynchronously (could move to background function eventually but good for now)
     await updateUserRatingCache(toUserId, ratedAs as 'owner' | 'renter');
+
+    // Check if both users have submitted a rating for this transaction
+    const ratingsSnap = await db.collection('ratings')
+      .where('transactionId', '==', transactionId)
+      .get();
+
+    if (ratingsSnap.size >= 2) {
+      // Both users have rated! Update transaction status to completed
+      await db.collection('transactions').doc(String(transactionId)).update({
+        status: 'completed',
+        updatedAt: now()
+      });
+    } else {
+      // Only one user has rated. Notify the other user to rate back
+      await createNotification({
+        userId: toUserId,
+        type: 'review',
+        title: 'Berikan Rating Balik',
+        body: `${fromUserName} telah memberikan rating. Berikan rating balik untuk menyelesaikan transaksi!`,
+        transactionId: String(transactionId)
+      }).catch(err => console.error('Error sending rate back notification:', err));
+    }
 
     return ok(res, { id: docRef.id, ...ratingData }, 'Rating berhasil dikirim');
   }),
