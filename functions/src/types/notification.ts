@@ -1,6 +1,7 @@
 export type NotificationType =
   | 'request'
   | 'approved'
+  | 'rejected'
   | 'reminder'
   | 'overdue'
   | 'payment'

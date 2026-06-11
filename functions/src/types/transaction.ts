@@ -25,6 +25,16 @@ export interface TransactionDoc {
   // Denormalized
   renterName: string;
   ownerName: string;
+
+  // Adendum (Extension) Request
+  adendumRequest?: {
+    newEndDate: unknown;
+    additionalCost: number;
+    status: 'pending' | 'approved' | 'rejected';
+    paymentMethod?: 'midtrans' | 'cash';
+    paymentStatus?: 'pending' | 'paid';
+    createdAt: unknown;
+  };
 }
 
 export interface TransactionDetailDoc {

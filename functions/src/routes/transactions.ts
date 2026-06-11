@@ -6,6 +6,7 @@ import { ERROR_CODES } from '../errors';
 import { requireAuth } from '../middleware/require-auth';
 import { asyncHandler } from '../lib/async-handler';
 import crypto from 'crypto';
+import { createNotification } from '../lib/notifications';
 import type { TransactionDoc, TransactionDetailDoc, TransactionStatus } from '../types/transaction';
 
 export const transactionsRouter = Router();
@@ -32,31 +33,50 @@ transactionsRouter.get(
     const uid = req.user!.uid;
     const { role, status } = req.query; // filter opsional
 
-    let query: admin.firestore.Query = db.collection('transactions');
+    let transactions: any[] = [];
 
-    // Use separate queries if not specified, or build combined condition
     if (role === 'owner') {
-      query = query.where('ownerId', '==', uid);
+      let query = db.collection('transactions').where('ownerId', '==', uid);
+      if (status && typeof status === 'string') {
+        query = query.where('status', '==', status);
+      }
+      const snapshot = await query.get();
+      transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } else if (role === 'renter') {
-      query = query.where('renterId', '==', uid);
+      let query = db.collection('transactions').where('renterId', '==', uid);
+      if (status && typeof status === 'string') {
+        query = query.where('status', '==', status);
+      }
+      const snapshot = await query.get();
+      transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } else {
-      // If no explicit role, we need to query BOTH.
-      // Firestore v12+ Node.js supports Filter.or
-      const { Filter } = admin.firestore;
-      query = query.where(
-        Filter.or(
-          Filter.where('ownerId', '==', uid),
-          Filter.where('renterId', '==', uid)
-        )
-      );
+      // Parallel queries to fetch both renter and owner transactions (avoids composite index requirement)
+      let queryOwner = db.collection('transactions').where('ownerId', '==', uid);
+      let queryRenter = db.collection('transactions').where('renterId', '==', uid);
+
+      if (status && typeof status === 'string') {
+        queryOwner = queryOwner.where('status', '==', status);
+        queryRenter = queryRenter.where('status', '==', status);
+      }
+
+      const [snapOwner, snapRenter] = await Promise.all([
+        queryOwner.get(),
+        queryRenter.get()
+      ]);
+
+      const mapTxs = new Map<string, any>();
+      snapOwner.docs.forEach(doc => mapTxs.set(doc.id, { id: doc.id, ...doc.data() }));
+      snapRenter.docs.forEach(doc => mapTxs.set(doc.id, { id: doc.id, ...doc.data() }));
+
+      transactions = Array.from(mapTxs.values());
     }
 
-    if (status && typeof status === 'string') {
-      query = query.where('status', '==', status);
-    }
-
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
-    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort in-memory by createdAt descending
+    transactions.sort((a, b) => {
+      const timeA = a.createdAt && typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : 0;
+      const timeB = b.createdAt && typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : 0;
+      return timeB - timeA;
+    });
 
     return ok(res, transactions, 'Daftar transaksi berhasil diambil');
   }),
@@ -218,6 +238,18 @@ transactionsRouter.post(
 
     await batch.commit();
 
+    // Trigger push notification to the owner
+    createNotification({
+      userId: ownerId,
+      type: 'request',
+      class: 'transactional',
+      title: 'Permintaan Sewa Baru',
+      body: `${renterName} telah mengajukan permintaan sewa untuk barang Anda.`,
+      transactionId: transRef.id,
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send new rental request push notification:', err);
+    });
+
     const createdSnap = await transRef.get();
 
     return ok(res, { id: transRef.id, ...createdSnap.data() }, 'Request sewa berhasil diajukan');
@@ -251,6 +283,18 @@ transactionsRouter.patch(
     await docRef.update({
       status: 'approved',
       updatedAt: now()
+    });
+
+    // Trigger push notification to the renter
+    createNotification({
+      userId: trans.renterId,
+      type: 'approved',
+      class: 'transactional',
+      title: 'Permintaan Sewa Disetujui',
+      body: `Permintaan sewa Anda telah disetujui oleh ${trans.ownerName}. Silakan selesaikan pembayaran.`,
+      transactionId: id,
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send rental approved push notification:', err);
     });
 
     return ok(res, { id, status: 'approved' }, 'Request sewa berhasil disetujui');
@@ -416,6 +460,189 @@ transactionsRouter.post(
     await batch.commit();
 
     return ok(res, { id, status: 'completed' }, 'Check-out berhasil. Barang telah dikembalikan.');
+  }),
+);
+
+/**
+ * POST /transactions/:id/extend
+ * Penyewa mengajukan perpanjangan sewa (Adendum)
+ */
+transactionsRouter.post(
+  '/:id/extend',
+  asyncHandler(async (req, res) => {
+    const uid = req.user!.uid;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { newEndDate, additionalCost, paymentMethod } = req.body;
+
+    if (!newEndDate) return fail(res, ERROR_CODES.INVALID_INPUT, 'newEndDate wajib diisi', 400);
+    if (!paymentMethod || !['midtrans', 'cash'].includes(paymentMethod)) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Metode pembayaran (midtrans/cash) wajib diisi untuk perpanjangan', 400);
+    }
+
+    const docRef = db.collection('transactions').doc(String(id));
+    const snap = await docRef.get();
+
+    if (!snap.exists) return fail(res, ERROR_CODES.NOT_FOUND, 'Transaksi tidak ditemukan', 404);
+    
+    const trans = snap.data() as TransactionDoc;
+    if (trans.renterId !== uid) {
+      return fail(res, ERROR_CODES.FORBIDDEN, 'Hanya penyewa yang bisa mengajukan perpanjangan sewa', 403);
+    }
+
+    if (trans.status !== 'ongoing') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Perpanjangan hanya bisa dilakukan pada saat status sewa aktif (ongoing)', 409);
+    }
+
+    // Check if there is already a pending extension
+    if (trans.adendumRequest?.status === 'pending') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Anda sudah memiliki pengajuan perpanjangan yang belum direspons pemilik', 409);
+    }
+
+    const eDate = new Date(newEndDate);
+    if (isNaN(eDate.getTime())) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Format tanggal tidak valid', 400);
+    }
+
+    await docRef.update({
+      adendumRequest: {
+        newEndDate: admin.firestore.Timestamp.fromDate(eDate),
+        additionalCost: Number(additionalCost) || 0,
+        status: 'pending',
+        paymentMethod: paymentMethod,
+        paymentStatus: 'pending',
+        createdAt: now(),
+      },
+      updatedAt: now()
+    });
+
+    // Trigger notification to owner
+    createNotification({
+      userId: trans.ownerId,
+      type: 'request',
+      class: 'transactional',
+      title: 'Permintaan Perpanjangan Sewa',
+      body: `${trans.renterName} mengajukan perpanjangan sewa. Silakan tinjau dan berikan persetujuan.`,
+      transactionId: id,
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send extension request push notification:', err);
+    });
+
+    return ok(res, { id, status: 'pending' }, 'Pengajuan perpanjangan berhasil dikirim');
+  }),
+);
+
+/**
+ * PATCH /transactions/:id/extend/approve
+ * Pemilik menyetujui perpanjangan sewa
+ */
+transactionsRouter.patch(
+  '/:id/extend/approve',
+  asyncHandler(async (req, res) => {
+    const uid = req.user!.uid;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    const docRef = db.collection('transactions').doc(String(id));
+    const snap = await docRef.get();
+
+    if (!snap.exists) return fail(res, ERROR_CODES.NOT_FOUND, 'Transaksi tidak ditemukan', 404);
+    
+    const trans = snap.data() as TransactionDoc;
+    if (trans.ownerId !== uid) {
+      return fail(res, ERROR_CODES.FORBIDDEN, 'Hanya pemilik yang bisa menyetujui perpanjangan sewa', 403);
+    }
+
+    if (trans.adendumRequest?.status !== 'pending') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Tidak ada pengajuan perpanjangan yang aktif', 409);
+    }
+
+    const newEndDateTimestamp = trans.adendumRequest.newEndDate;
+    const addedCost = trans.adendumRequest.additionalCost || 0;
+
+    const batch = db.batch();
+
+    // 1. Update transaction doc
+    if (trans.adendumRequest.paymentMethod === 'cash') {
+      batch.update(docRef, {
+        'adendumRequest.status': 'approved',
+        totalPrice: admin.firestore.FieldValue.increment(addedCost),
+        updatedAt: now()
+      });
+
+      // 2. Update transaction_details end date
+      const detailsSnap = await docRef.collection('transaction_details').get();
+      for (const d of detailsSnap.docs) {
+        batch.update(d.ref, {
+          endDate: newEndDateTimestamp
+        });
+      }
+    } else {
+      // For Midtrans, only update status. EndDate and Cost will be updated in webhook upon payment success.
+      batch.update(docRef, {
+        'adendumRequest.status': 'approved',
+        updatedAt: now()
+      });
+    }
+
+    await batch.commit();
+
+    // Notify Renter
+    createNotification({
+      userId: trans.renterId,
+      type: 'approved',
+      class: 'transactional',
+      title: 'Perpanjangan Sewa Disetujui',
+      body: `Permintaan perpanjangan sewa Anda telah disetujui oleh ${trans.ownerName}.`,
+      transactionId: id,
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send extension approval push notification:', err);
+    });
+
+    return ok(res, { id, status: 'approved' }, 'Perpanjangan sewa berhasil disetujui');
+  }),
+);
+
+/**
+ * PATCH /transactions/:id/extend/reject
+ * Pemilik menolak perpanjangan sewa
+ */
+transactionsRouter.patch(
+  '/:id/extend/reject',
+  asyncHandler(async (req, res) => {
+    const uid = req.user!.uid;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    const docRef = db.collection('transactions').doc(String(id));
+    const snap = await docRef.get();
+
+    if (!snap.exists) return fail(res, ERROR_CODES.NOT_FOUND, 'Transaksi tidak ditemukan', 404);
+    
+    const trans = snap.data() as TransactionDoc;
+    if (trans.ownerId !== uid) {
+      return fail(res, ERROR_CODES.FORBIDDEN, 'Hanya pemilik yang berwenang menolak perpanjangan', 403);
+    }
+
+    if (trans.adendumRequest?.status !== 'pending') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Tidak ada pengajuan perpanjangan yang aktif', 409);
+    }
+
+    await docRef.update({
+      'adendumRequest.status': 'rejected',
+      updatedAt: now()
+    });
+
+    // Notify Renter
+    createNotification({
+      userId: trans.renterId,
+      type: 'rejected',
+      class: 'transactional',
+      title: 'Perpanjangan Sewa Ditolak',
+      body: `${trans.ownerName} menolak perpanjangan sewa Anda. Silakan kembalikan barang sesuai jadwal semula.`,
+      transactionId: id,
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send extension rejection push notification:', err);
+    });
+
+    return ok(res, { id, status: 'rejected' }, 'Perpanjangan sewa berhasil ditolak');
   }),
 );
 
