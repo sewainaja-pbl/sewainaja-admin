@@ -41,7 +41,7 @@ gpsRouter.post(
 
     // Walaupun idealnya hanya log saat overdue, kita terima log sesuai permintaan client
     // jika transaksi belum selesai/cancel
-    if (['completed', 'cancelled'].includes(transaction?.status)) {
+    if (['completed', 'cancelled', 'waiting_rating'].includes(transaction?.status)) {
       return fail(res, ERROR_CODES.CONFLICT, 'Transaksi sudah selesai atau dibatalkan', 409);
     }
 

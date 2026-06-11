@@ -8,6 +8,7 @@ import { asyncHandler } from '../lib/async-handler';
 import crypto from 'crypto';
 import { createNotification } from '../lib/notifications';
 import type { TransactionDoc, TransactionDetailDoc, TransactionStatus } from '../types/transaction';
+import { createNotification } from '../lib/notifications';
 
 export const transactionsRouter = Router();
 
@@ -78,7 +79,17 @@ transactionsRouter.get(
       return timeB - timeA;
     });
 
-    return ok(res, transactions, 'Daftar transaksi berhasil diambil');
+    const ratingsSnap = await db.collection('ratings')
+      .where('fromUserId', '==', uid)
+      .get();
+    const ratedTransactionIds = new Set(ratingsSnap.docs.map(d => d.data().transactionId));
+
+    const result = transactions.map((t: any) => ({
+      ...t,
+      hasUserRated: ratedTransactionIds.has(t.id),
+    }));
+
+    return ok(res, result, 'Daftar transaksi berhasil diambil');
   }),
 );
 
@@ -104,11 +115,19 @@ transactionsRouter.get(
       return fail(res, ERROR_CODES.FORBIDDEN, 'Anda tidak memiliki akses ke transaksi ini', 403);
     }
 
+    // Check if the user has rated this transaction
+    const ratingSnap = await db.collection('ratings')
+      .where('transactionId', '==', id)
+      .where('fromUserId', '==', uid)
+      .limit(1)
+      .get();
+    const hasUserRated = !ratingSnap.empty;
+
     // Fetch subcollection: transaction_details
     const detailsSnap = await docRef.collection('transaction_details').get();
     const details = detailsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    return ok(res, { ...transData, id: snapshot.id, details }, 'Detail transaksi berhasil diambil');
+    return ok(res, { ...transData, id: snapshot.id, details, hasUserRated }, 'Detail transaksi berhasil diambil');
   }),
 );
 
@@ -427,7 +446,7 @@ transactionsRouter.post(
     const batch = db.batch();
 
     batch.update(docRef, {
-      status: 'completed',
+      status: 'waiting_rating',
       checkoutAt: now(),
       qrCheckoutUsedAt: now(),
       isOverdue: false, // disable overdue tracking
@@ -459,7 +478,29 @@ transactionsRouter.post(
 
     await batch.commit();
 
-    return ok(res, { id, status: 'completed' }, 'Check-out berhasil. Barang telah dikembalikan.');
+    // Fetch item name to include in notifications
+    const detailsSnap = await docRef.collection('transaction_details').limit(1).get();
+    const itemName = !detailsSnap.empty ? detailsSnap.docs[0].data().itemNameSnapshot : 'barang';
+
+    // Send push notification to Renter to review Owner
+    await createNotification({
+      userId: trans.renterId,
+      type: 'review',
+      title: 'Beri Rating Pemilik',
+      body: `Masa sewa ${itemName} telah selesai. Harap berikan rating untuk pemilik barang.`,
+      transactionId: String(id),
+    }).catch(err => console.error('Error sending renter checkout notification:', err));
+
+    // Send push notification to Owner to review Renter
+    await createNotification({
+      userId: trans.ownerId,
+      type: 'review',
+      title: 'Beri Rating Penyewa',
+      body: `Masa sewa ${itemName} telah selesai. Harap berikan rating untuk penyewa barang.`,
+      transactionId: String(id),
+    }).catch(err => console.error('Error sending owner checkout notification:', err));
+
+    return ok(res, { id, status: 'waiting_rating' }, 'Check-out berhasil. Barang telah dikembalikan.');
   }),
 );
 

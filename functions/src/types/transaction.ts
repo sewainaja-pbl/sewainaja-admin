@@ -1,4 +1,4 @@
-export type TransactionStatus = 'pending' | 'approved' | 'ongoing' | 'completed' | 'cancelled' | 'disputed';
+export type TransactionStatus = 'pending' | 'approved' | 'ongoing' | 'completed' | 'cancelled' | 'disputed' | 'waiting_rating';
 
 export interface TransactionDoc {
   id: string;
