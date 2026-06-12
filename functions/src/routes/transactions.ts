@@ -46,7 +46,7 @@ async function checkItemDateOverlap(
     if (!txSnap.exists) continue;
 
     const tx = txSnap.data();
-    if (tx && ['approved', 'ongoing'].includes(tx.status)) {
+    if (tx && ['approved', 'ongoing', 'disputed'].includes(tx.status)) {
       const activeStart = (detail.startDate as admin.firestore.Timestamp).toDate();
       const activeEnd = (detail.endDate as admin.firestore.Timestamp).toDate();
 
@@ -124,10 +124,21 @@ transactionsRouter.get(
       .get();
     const ratedTransactionIds = new Set(ratingsSnap.docs.map(d => d.data().transactionId));
 
-    const result = transactions.map((t: any) => ({
-      ...t,
-      hasUserRated: ratedTransactionIds.has(t.id),
-    }));
+    const result = transactions.map((t: any) => {
+      const data = {
+        ...t,
+        hasUserRated: ratedTransactionIds.has(t.id),
+      };
+      if (!req.user!.claims.admin) {
+        if (data.renterId === uid) {
+          data.qrCheckinTokenHash = '';
+        }
+        if (data.ownerId === uid) {
+          data.qrCheckoutTokenHash = '';
+        }
+      }
+      return data;
+    });
 
     return ok(res, result, 'Daftar transaksi berhasil diambil');
   }),
@@ -167,7 +178,17 @@ transactionsRouter.get(
     const detailsSnap = await docRef.collection('transaction_details').get();
     const details = detailsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    return ok(res, { ...transData, id: snapshot.id, details, hasUserRated }, 'Detail transaksi berhasil diambil');
+    const responseData = { ...transData, id: snapshot.id, details, hasUserRated };
+    if (!req.user!.claims.admin) {
+      if (responseData.renterId === uid) {
+        responseData.qrCheckinTokenHash = '';
+      }
+      if (responseData.ownerId === uid) {
+        responseData.qrCheckoutTokenHash = '';
+      }
+    }
+
+    return ok(res, responseData, 'Detail transaksi berhasil diambil');
   }),
 );
 
@@ -435,7 +456,9 @@ transactionsRouter.patch(
           escrowStatus: 'refunded',
           updatedAt: now()
         });
-        totalRefund += pData.amount || 0;
+        if (pData.paymentMethod === 'midtrans') {
+          totalRefund += pData.amount || 0;
+        }
       }
     }
 
@@ -576,11 +599,16 @@ transactionsRouter.post(
 
     let totalAmountReleased = 0;
     for (const pDoc of paymentsSnap.docs) {
-      batch.update(pDoc.ref, {
-        escrowStatus: 'released',
-        updatedAt: now()
-      });
-      totalAmountReleased += pDoc.data().amount || 0;
+      const pData = pDoc.data();
+      if (pData.escrowStatus === 'held') {
+        batch.update(pDoc.ref, {
+          escrowStatus: 'released',
+          updatedAt: now()
+        });
+        if (pData.paymentMethod === 'midtrans') {
+          totalAmountReleased += pData.amount || 0;
+        }
+      }
     }
 
     if (totalAmountReleased > 0) {
@@ -659,6 +687,22 @@ transactionsRouter.post(
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Format tanggal tidak valid', 400);
     }
 
+    // Check if the new range overlaps with any other active booking
+    const detailsSnap = await docRef.collection('transaction_details').get();
+    for (const d of detailsSnap.docs) {
+      const detail = d.data();
+      const originalEndDate = (detail.endDate as admin.firestore.Timestamp).toDate();
+      const overlapCheck = await checkItemDateOverlap(detail.itemId, originalEndDate, eDate, id);
+      if (overlapCheck.hasOverlap) {
+        return fail(
+          res,
+          ERROR_CODES.CONFLICT,
+          `Tidak dapat memperpanjang sewa. Barang "${overlapCheck.itemName || 'tersebut'}" sudah disewa oleh pengguna lain pada rentang tanggal perpanjangan.`,
+          409
+        );
+      }
+    }
+
     await docRef.update({
       adendumRequest: {
         newEndDate: admin.firestore.Timestamp.fromDate(eDate),
@@ -711,8 +755,25 @@ transactionsRouter.patch(
       return fail(res, ERROR_CODES.CONFLICT, 'Tidak ada pengajuan perpanjangan yang aktif', 409);
     }
 
-    const newEndDateTimestamp = trans.adendumRequest.newEndDate;
+    const newEndDateTimestamp = trans.adendumRequest.newEndDate as admin.firestore.Timestamp;
     const addedCost = trans.adendumRequest.additionalCost || 0;
+    const eDate = newEndDateTimestamp.toDate();
+
+    // Verify overlap before approving to prevent race conditions
+    const detailsSnap = await docRef.collection('transaction_details').get();
+    for (const d of detailsSnap.docs) {
+      const detail = d.data();
+      const originalEndDate = (detail.endDate as admin.firestore.Timestamp).toDate();
+      const overlapCheck = await checkItemDateOverlap(detail.itemId, originalEndDate, eDate, id);
+      if (overlapCheck.hasOverlap) {
+        return fail(
+          res,
+          ERROR_CODES.CONFLICT,
+          `Gagal menyetujui. Barang "${overlapCheck.itemName || 'tersebut'}" sudah disewa oleh pengguna lain pada rentang tanggal perpanjangan.`,
+          409
+        );
+      }
+    }
 
     const batch = db.batch();
 

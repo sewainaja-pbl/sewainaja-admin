@@ -132,7 +132,9 @@ adminDisputesRouter.patch(
             escrowStatus: newEscrowStatus,
             updatedAt: now()
           });
-          totalAmount += pData.amount || 0;
+          if (pData.paymentMethod === 'midtrans') {
+            totalAmount += pData.amount || 0;
+          }
         }
       }
 

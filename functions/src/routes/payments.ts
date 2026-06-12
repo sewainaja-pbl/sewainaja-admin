@@ -35,6 +35,10 @@ paymentsRouter.post(
       return fail(res, ERROR_CODES.FORBIDDEN, 'Hanya penyewa yang bisa memulai pembayaran', 403);
     }
 
+    if (transaction?.status !== 'approved') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Pembayaran hanya dapat dilakukan setelah permintaan sewa disetujui pemilik', 409);
+    }
+
     const orderId = `ORDER-${transactionId}-${Date.now()}`;
     const amount = transaction?.totalPrice || 0;
 
@@ -96,6 +100,10 @@ paymentsRouter.post(
     const transaction = snapTrans.data();
     if (transaction?.renterId !== uid) {
       return fail(res, ERROR_CODES.FORBIDDEN, 'Hanya penyewa yang bisa memilih metode pembayaran COD', 403);
+    }
+
+    if (transaction?.status !== 'approved') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Metode pembayaran COD hanya dapat dipilih setelah permintaan sewa disetujui pemilik', 409);
     }
 
     const orderId = `COD-${transactionId}-${Date.now()}`;
@@ -280,13 +288,13 @@ paymentsRouter.post(
                 'totalPrice': admin.firestore.FieldValue.increment(additionalCost)
               });
 
-              // 2. Update Transaction Detail (assume 1 item for now)
+              // 2. Update all Transaction Details' end dates
               const detailSnap = await db.collection('transactions').doc(payment.transactionId).collection('transaction_details').get();
-              if (!detailSnap.empty) {
-                const detailDoc = detailSnap.docs[0];
+              for (let idx = 0; idx < detailSnap.docs.length; idx++) {
+                const detailDoc = detailSnap.docs[idx];
                 await detailDoc.ref.update({
                   'endDate': newEndDate,
-                  'subtotal': admin.firestore.FieldValue.increment(additionalCost)
+                  ...(idx === 0 ? { 'subtotal': admin.firestore.FieldValue.increment(additionalCost) } : {})
                 });
               }
             }
@@ -474,13 +482,13 @@ paymentsRouter.get(
                       'totalPrice': admin.firestore.FieldValue.increment(additionalCost)
                     });
 
-                    // 2. Update Transaction Detail
+                    // 2. Update all Transaction Details' end dates
                     const detailSnap = await db.collection('transactions').doc(payment.transactionId).collection('transaction_details').get();
-                    if (!detailSnap.empty) {
-                      const detailDoc = detailSnap.docs[0];
+                    for (let idx = 0; idx < detailSnap.docs.length; idx++) {
+                      const detailDoc = detailSnap.docs[idx];
                       await detailDoc.ref.update({
                         'endDate': newEndDate,
-                        'subtotal': admin.firestore.FieldValue.increment(additionalCost)
+                        ...(idx === 0 ? { 'subtotal': admin.firestore.FieldValue.increment(additionalCost) } : {})
                       });
                     }
                   }
