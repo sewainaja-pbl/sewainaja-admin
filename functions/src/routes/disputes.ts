@@ -41,6 +41,10 @@ disputesRouter.post(
       return fail(res, ERROR_CODES.FORBIDDEN, 'Anda tidak berhak membuka sengketa pada transaksi ini', 403);
     }
 
+    if (!['approved', 'ongoing'].includes(trans?.status)) {
+      return fail(res, ERROR_CODES.CONFLICT, 'Sengketa hanya dapat diajukan pada transaksi aktif yang telah disetujui atau sedang berjalan', 409);
+    }
+
     // Denormalization info
     const [reporterSnap] = await Promise.all([
       db.collection('users').doc(uid).get()
@@ -82,10 +86,14 @@ disputesRouter.post(
       .get();
 
     for (const pDoc of paymentsSnap.docs) {
-      batch.update(pDoc.ref, {
-        escrowStatus: 'disputed_locked',
-        updatedAt: now()
-      });
+      const pData = pDoc.data();
+      // Only lock payments that are currently held in escrow (not already released or refunded)
+      if (pData.escrowStatus === 'held') {
+        batch.update(pDoc.ref, {
+          escrowStatus: 'disputed_locked',
+          updatedAt: now()
+        });
+      }
     }
 
     await batch.commit();

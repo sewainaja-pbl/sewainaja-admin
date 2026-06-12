@@ -406,11 +406,118 @@ paymentsRouter.get(
 
     // Since one transaction can have multiple payment attempts (e.g. failures)
     // we list all payments tied to this transaction ordered by newest
-    const snap = await db.collection('payments')
+    const snapRef = await db.collection('payments')
       .where('transactionId', '==', String(transactionId))
       .get();
 
-    const payments = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+    const payments = snapRef.docs.map(d => ({ id: d.id, ...d.data() as any }));
+
+    // Real-time Midtrans status verification pull-back
+    for (const payment of payments) {
+      if (payment.paymentMethod === 'midtrans' && payment.status === 'pending') {
+        try {
+          // payment.id is the midtransOrderId (e.g., ORDER-... or ADENDUM-...)
+          const midtransStatus = await coreApi.transaction.status(payment.id);
+          const transactionStatus = midtransStatus.transaction_status;
+          const fraudStatus = midtransStatus.fraud_status;
+          const paymentType = midtransStatus.payment_type;
+
+          console.log(`Pull status check from Midtrans for order: ${payment.id}. Status: ${transactionStatus}, Fraud: ${fraudStatus}`);
+
+          let finalStatus: 'paid' | 'failed' | 'pending' | 'refunded' = 'pending';
+          let isSuccess = false;
+
+          if (transactionStatus === 'capture') {
+            if (fraudStatus === 'accept') {
+              finalStatus = 'paid';
+              isSuccess = true;
+            }
+          } else if (transactionStatus === 'settlement') {
+            finalStatus = 'paid';
+            isSuccess = true;
+          } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
+            finalStatus = 'failed';
+          } else if (transactionStatus === 'pending') {
+            finalStatus = 'pending';
+          } else if (transactionStatus === 'refund') {
+            finalStatus = 'refunded';
+          }
+
+          if (finalStatus !== 'pending') {
+            // Update Firestore Payment doc
+            await db.collection('payments').doc(payment.id).update({
+              status: finalStatus,
+              midtransPaymentType: paymentType,
+              paidAt: isSuccess ? now() : null,
+              escrowStatus: isSuccess ? 'held' : null,
+            });
+
+            // Update the local array object so the API response reflects the latest status immediately
+            payment.status = finalStatus;
+            payment.midtransPaymentType = paymentType;
+            payment.paidAt = isSuccess ? now() : null;
+
+            // Trigger success updates if payment succeeded
+            if (isSuccess) {
+              const transSnap = await db.collection('transactions').doc(payment.transactionId).get();
+              if (transSnap.exists) {
+                const trans = transSnap.data();
+                if (trans) {
+                  const isAdendum = payment.id.startsWith('ADENDUM-');
+                  if (isAdendum && trans.adendumRequest && trans.adendumRequest.status === 'approved') {
+                    const newEndDate = trans.adendumRequest.newEndDate;
+                    const additionalCost = trans.adendumRequest.additionalCost || 0;
+
+                    // 1. Update Transaction
+                    await db.collection('transactions').doc(payment.transactionId).update({
+                      'adendumRequest.paymentStatus': 'paid',
+                      'totalPrice': admin.firestore.FieldValue.increment(additionalCost)
+                    });
+
+                    // 2. Update Transaction Detail
+                    const detailSnap = await db.collection('transactions').doc(payment.transactionId).collection('transaction_details').get();
+                    if (!detailSnap.empty) {
+                      const detailDoc = detailSnap.docs[0];
+                      await detailDoc.ref.update({
+                        'endDate': newEndDate,
+                        'subtotal': admin.firestore.FieldValue.increment(additionalCost)
+                      });
+                    }
+                  }
+
+                  // Notify renter
+                  createNotification({
+                    userId: trans.renterId,
+                    type: 'payment',
+                    class: 'transactional',
+                    title: isAdendum ? 'Pembayaran Perpanjangan Sukses' : 'Pembayaran Sukses',
+                    body: isAdendum 
+                      ? `Pembayaran perpanjangan sewa Anda telah berhasil diverifikasi.`
+                      : `Pembayaran Anda untuk transaksi sewa barang ${trans.ownerName} telah berhasil diverifikasi.`,
+                    transactionId: payment.transactionId,
+                  }).catch(err => console.error('[Notification Error] Renter payment pull success notification failed:', err));
+
+                  // Notify owner
+                  createNotification({
+                    userId: trans.ownerId,
+                    type: 'payment',
+                    class: 'transactional',
+                    title: isAdendum ? 'Pembayaran Perpanjangan Diterima' : 'Pembayaran Diterima',
+                    body: isAdendum
+                      ? `Pembayaran perpanjangan sewa oleh ${trans.renterName} telah diterima.`
+                      : `Pembayaran sewa oleh ${trans.renterName} telah diterima. Silakan lakukan serah terima barang.`,
+                    transactionId: payment.transactionId,
+                  }).catch(err => console.error('[Notification Error] Owner payment pull success notification failed:', err));
+                }
+              }
+            }
+          }
+        } catch (midtransError: any) {
+          console.error(`Failed to fetch status from Midtrans for order ${payment.id}:`, midtransError.message || midtransError);
+        }
+      }
+    }
+
     payments.sort((a, b) => {
       const timeA = a.createdAt && typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : 0;
       const timeB = b.createdAt && typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : 0;
@@ -420,3 +527,4 @@ paymentsRouter.get(
     return ok(res, payments, 'Status pembayaran berhasil diambil');
   }),
 );
+

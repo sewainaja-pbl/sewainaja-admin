@@ -125,12 +125,15 @@ adminDisputesRouter.patch(
       let totalAmount = 0;
       for (const pDoc of paymentsSnap.docs) {
         const pData = pDoc.data();
-        const newEscrowStatus = decision === 'refund_to_renter' ? 'refunded' : 'released';
-        batch.update(pDoc.ref, {
-          escrowStatus: newEscrowStatus,
-          updatedAt: now()
-        });
-        totalAmount += pData.amount || 0;
+        // Only release/refund payments that are currently locked under dispute
+        if (pData.escrowStatus === 'disputed_locked') {
+          const newEscrowStatus = decision === 'refund_to_renter' ? 'refunded' : 'released';
+          batch.update(pDoc.ref, {
+            escrowStatus: newEscrowStatus,
+            updatedAt: now()
+          });
+          totalAmount += pData.amount || 0;
+        }
       }
 
       if (totalAmount > 0 && trans) {

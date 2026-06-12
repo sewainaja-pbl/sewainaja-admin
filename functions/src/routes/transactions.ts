@@ -8,7 +8,6 @@ import { asyncHandler } from '../lib/async-handler';
 import crypto from 'crypto';
 import { createNotification } from '../lib/notifications';
 import type { TransactionDoc, TransactionDetailDoc, TransactionStatus } from '../types/transaction';
-import { createNotification } from '../lib/notifications';
 
 export const transactionsRouter = Router();
 
@@ -23,6 +22,47 @@ const getExpiryDate = (hours = 24) => {
   date.setHours(date.getHours() + hours);
   return date;
 };
+
+// Helper to check for overlapping active bookings (status: approved or ongoing) for a specific item
+async function checkItemDateOverlap(
+  itemId: string,
+  startDate: Date,
+  endDate: Date,
+  ignoreTransactionId?: string
+): Promise<{ hasOverlap: boolean; overlappingTxId?: string; itemName?: string }> {
+  const detailsSnap = await db.collectionGroup('transaction_details')
+    .where('itemId', '==', String(itemId))
+    .get();
+
+  for (const detailDoc of detailsSnap.docs) {
+    const detail = detailDoc.data();
+    const parentTxRef = detailDoc.ref.parent.parent;
+    if (!parentTxRef) continue;
+
+    const txId = parentTxRef.id;
+    if (ignoreTransactionId && txId === ignoreTransactionId) continue;
+
+    const txSnap = await parentTxRef.get();
+    if (!txSnap.exists) continue;
+
+    const tx = txSnap.data();
+    if (tx && ['approved', 'ongoing'].includes(tx.status)) {
+      const activeStart = (detail.startDate as admin.firestore.Timestamp).toDate();
+      const activeEnd = (detail.endDate as admin.firestore.Timestamp).toDate();
+
+      // Overlap condition: activeStart < endDate && activeEnd > startDate
+      if (activeStart < endDate && activeEnd > startDate) {
+        return {
+          hasOverlap: true,
+          overlappingTxId: txId,
+          itemName: detail.itemNameSnapshot || 'Barang'
+        };
+      }
+    }
+  }
+
+  return { hasOverlap: false };
+}
 
 /**
  * GET /transactions
@@ -202,6 +242,17 @@ transactionsRouter.post(
         return fail(res, ERROR_CODES.INVALID_INPUT, 'Format tanggal sewa tidak valid', 400);
       }
 
+      // Check if item is already booked for overlapping dates
+      const overlapCheck = await checkItemDateOverlap(reqItem.itemId, sDate, eDate);
+      if (overlapCheck.hasOverlap) {
+        return fail(
+          res,
+          ERROR_CODES.CONFLICT,
+          `Barang "${itemData?.name || 'tersebut'}" sudah disewa oleh pengguna lain pada rentang tanggal tersebut.`,
+          409
+        );
+      }
+
       // Calculate hours
       const hours = Math.ceil((eDate.getTime() - sDate.getTime()) / (1000 * 60 * 60));
       const subtotal = hours * (itemData?.pricePerHour || 0);
@@ -299,6 +350,24 @@ transactionsRouter.patch(
       return fail(res, ERROR_CODES.CONFLICT, `Status transaksi saat ini adalah ${trans.status}, tidak bisa diapprove`, 409);
     }
 
+    // Fetch transaction details of this transaction to check date overlap
+    const detailsSnap = await docRef.collection('transaction_details').get();
+    for (const detailDoc of detailsSnap.docs) {
+      const detail = detailDoc.data();
+      const sDate = (detail.startDate as admin.firestore.Timestamp).toDate();
+      const eDate = (detail.endDate as admin.firestore.Timestamp).toDate();
+
+      const overlapCheck = await checkItemDateOverlap(detail.itemId, sDate, eDate, id);
+      if (overlapCheck.hasOverlap) {
+        return fail(
+          res,
+          ERROR_CODES.CONFLICT,
+          `Gagal menyetujui. Barang "${overlapCheck.itemName}" sudah disewa oleh pengguna lain pada rentang tanggal tersebut.`,
+          409
+        );
+      }
+    }
+
     await docRef.update({
       status: 'approved',
       updatedAt: now()
@@ -345,12 +414,48 @@ transactionsRouter.patch(
       return fail(res, ERROR_CODES.CONFLICT, 'Transaksi yang sudah berjalan atau selesai tidak bisa dibatalkan', 409);
     }
 
-    await docRef.update({
+    const batch = db.batch();
+
+    batch.update(docRef, {
       status: 'cancelled',
       updatedAt: now()
     });
 
-    return ok(res, { id, status: 'cancelled' }, 'Transaksi berhasil dibatalkan');
+    // Query paid payments in escrow
+    const paymentsSnap = await db.collection('payments')
+      .where('transactionId', '==', String(id))
+      .where('status', '==', 'paid')
+      .get();
+
+    let totalRefund = 0;
+    for (const pDoc of paymentsSnap.docs) {
+      const pData = pDoc.data();
+      if (pData.escrowStatus === 'held') {
+        batch.update(pDoc.ref, {
+          escrowStatus: 'refunded',
+          updatedAt: now()
+        });
+        totalRefund += pData.amount || 0;
+      }
+    }
+
+    if (totalRefund > 0) {
+      const renterRef = db.collection('users').doc(trans.renterId);
+      batch.update(renterRef, {
+        walletBalance: admin.firestore.FieldValue.increment(totalRefund),
+        updatedAt: now()
+      });
+    }
+
+    await batch.commit();
+
+    return ok(
+      res, 
+      { id, status: 'cancelled', refundAmount: totalRefund }, 
+      totalRefund > 0 
+        ? `Transaksi berhasil dibatalkan dan dana sebesar Rp. ${totalRefund} dikembalikan ke wallet Anda.` 
+        : 'Transaksi berhasil dibatalkan.'
+    );
   }),
 );
 
@@ -380,6 +485,16 @@ transactionsRouter.post(
 
     if (trans.status !== 'approved') {
       return fail(res, ERROR_CODES.CONFLICT, 'Transaksi belum disetujui atau sudah berjalan', 409);
+    }
+
+    // Verify that payment has been received/confirmed
+    const paymentsSnap = await db.collection('payments')
+      .where('transactionId', '==', String(id))
+      .where('status', '==', 'paid')
+      .get();
+
+    if (paymentsSnap.empty) {
+      return fail(res, ERROR_CODES.CONFLICT, 'Pembayaran belum diselesaikan atau belum dikonfirmasi pemilik barang', 409);
     }
 
     // Validate token match

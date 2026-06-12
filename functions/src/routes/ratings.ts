@@ -63,6 +63,10 @@ ratingsRouter.post(
       return fail(res, ERROR_CODES.FORBIDDEN, 'Anda tidak terdaftar di transaksi ini', 403);
     }
 
+    if (trans?.status !== 'waiting_rating') {
+      return fail(res, ERROR_CODES.CONFLICT, 'Rating hanya dapat diberikan setelah proses check-out (pengembalian barang) selesai', 409);
+    }
+
     // Check already voted
     const existing = await db.collection('ratings')
       .where('transactionId', '==', transactionId)
