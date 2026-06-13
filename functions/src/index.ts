@@ -88,19 +88,40 @@ export const onNotificationCreated = onDocumentCreated(
     }
 
     const title = (data['title'] as string | undefined) ?? 'Notifikasi baru';
-    const body = (data['body'] as string | undefined) ?? 'Ada pembaruan baru.';
+    let body = (data['body'] as string | undefined) ?? 'Ada pembaruan baru.';
+    let imageUrl = (data['imageUrl'] as string | undefined) ?? '';
     const notificationId = snap.id;
+
+    // Parse JSON item card body if the sender used raw JSON as the body text
+    if (body.startsWith('{') && body.includes('"name"')) {
+      try {
+        const parsed = JSON.parse(body);
+        const itemName = parsed.name || 'Barang';
+        body = `📦 ${itemName}`;
+        if (!imageUrl && parsed.image) {
+          imageUrl = parsed.image;
+        }
+      } catch (_) {
+        // Not valid JSON, keep body as-is
+      }
+    }
 
     const message = {
       token: fcmToken,
-      notification: { title, body },
+      notification: { 
+        title, 
+        body,
+        ...(imageUrl ? { imageUrl } : {}) 
+      },
       data: {
         notificationId,
         type: (data['type'] as string | undefined) ?? '',
         class: (data['class'] as string | undefined) ?? 'transactional',
         transactionId: (data['transactionId'] as string | undefined) ?? '',
         deeplink: (data['deeplink'] as string | undefined) ?? '',
-        imageUrl: (data['imageUrl'] as string | undefined) ?? '',
+        imageUrl: imageUrl,
+        chatPartnerId: (data['chatPartnerId'] as string | undefined) ?? '',
+        chatPartnerName: (data['chatPartnerName'] as string | undefined) ?? '',
         idempotencyKey: (data['idempotencyKey'] as string | undefined) ?? '',
       },
       android: {

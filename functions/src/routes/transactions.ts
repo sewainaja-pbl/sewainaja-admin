@@ -23,40 +23,38 @@ const getExpiryDate = (hours = 24) => {
   return date;
 };
 
-// Helper to check for overlapping active bookings (status: approved or ongoing) for a specific item
 async function checkItemDateOverlap(
+  ownerId: string,
   itemId: string,
   startDate: Date,
   endDate: Date,
   ignoreTransactionId?: string
 ): Promise<{ hasOverlap: boolean; overlappingTxId?: string; itemName?: string }> {
-  const detailsSnap = await db.collectionGroup('transaction_details')
-    .where('itemId', '==', String(itemId))
+  const txSnap = await db.collection('transactions')
+    .where('ownerId', '==', String(ownerId))
     .get();
 
-  for (const detailDoc of detailsSnap.docs) {
-    const detail = detailDoc.data();
-    const parentTxRef = detailDoc.ref.parent.parent;
-    if (!parentTxRef) continue;
-
-    const txId = parentTxRef.id;
-    if (ignoreTransactionId && txId === ignoreTransactionId) continue;
-
-    const txSnap = await parentTxRef.get();
-    if (!txSnap.exists) continue;
-
-    const tx = txSnap.data();
+  for (const doc of txSnap.docs) {
+    if (ignoreTransactionId && doc.id === ignoreTransactionId) continue;
+    
+    const tx = doc.data();
     if (tx && ['approved', 'ongoing', 'disputed'].includes(tx.status)) {
-      const activeStart = (detail.startDate as admin.firestore.Timestamp).toDate();
-      const activeEnd = (detail.endDate as admin.firestore.Timestamp).toDate();
+      const detailsSnap = await doc.ref.collection('transaction_details').get();
+      for (const detailDoc of detailsSnap.docs) {
+        const detail = detailDoc.data();
+        if (String(detail.itemId) === String(itemId)) {
+          const activeStart = (detail.startDate as admin.firestore.Timestamp).toDate();
+          const activeEnd = (detail.endDate as admin.firestore.Timestamp).toDate();
 
-      // Overlap condition: activeStart < endDate && activeEnd > startDate
-      if (activeStart < endDate && activeEnd > startDate) {
-        return {
-          hasOverlap: true,
-          overlappingTxId: txId,
-          itemName: detail.itemNameSnapshot || 'Barang'
-        };
+          // Overlap condition: activeStart < endDate && activeEnd > startDate
+          if (activeStart < endDate && activeEnd > startDate) {
+            return {
+              hasOverlap: true,
+              overlappingTxId: doc.id,
+              itemName: detail.itemNameSnapshot || 'Barang'
+            };
+          }
+        }
       }
     }
   }
@@ -264,7 +262,7 @@ transactionsRouter.post(
       }
 
       // Check if item is already booked for overlapping dates
-      const overlapCheck = await checkItemDateOverlap(reqItem.itemId, sDate, eDate);
+      const overlapCheck = await checkItemDateOverlap(ownerId, reqItem.itemId, sDate, eDate);
       if (overlapCheck.hasOverlap) {
         return fail(
           res,
@@ -378,7 +376,7 @@ transactionsRouter.patch(
       const sDate = (detail.startDate as admin.firestore.Timestamp).toDate();
       const eDate = (detail.endDate as admin.firestore.Timestamp).toDate();
 
-      const overlapCheck = await checkItemDateOverlap(detail.itemId, sDate, eDate, id);
+      const overlapCheck = await checkItemDateOverlap(trans.ownerId, detail.itemId, sDate, eDate, id);
       if (overlapCheck.hasOverlap) {
         return fail(
           res,
@@ -692,7 +690,7 @@ transactionsRouter.post(
     for (const d of detailsSnap.docs) {
       const detail = d.data();
       const originalEndDate = (detail.endDate as admin.firestore.Timestamp).toDate();
-      const overlapCheck = await checkItemDateOverlap(detail.itemId, originalEndDate, eDate, id);
+      const overlapCheck = await checkItemDateOverlap(trans.ownerId, detail.itemId, originalEndDate, eDate, id);
       if (overlapCheck.hasOverlap) {
         return fail(
           res,
@@ -764,7 +762,7 @@ transactionsRouter.patch(
     for (const d of detailsSnap.docs) {
       const detail = d.data();
       const originalEndDate = (detail.endDate as admin.firestore.Timestamp).toDate();
-      const overlapCheck = await checkItemDateOverlap(detail.itemId, originalEndDate, eDate, id);
+      const overlapCheck = await checkItemDateOverlap(trans.ownerId, detail.itemId, originalEndDate, eDate, id);
       if (overlapCheck.hasOverlap) {
         return fail(
           res,
