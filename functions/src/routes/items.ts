@@ -121,12 +121,15 @@ itemsRouter.get(
     const uid = req.user!.uid;
     const snapshot = await db.collection('items')
       .where('ownerId', '==', uid)
-      .where('status', '!=', 'archived')
-      .orderBy('status')
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const items = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
     return ok(res, items, 'Daftar barang Anda berhasil diambil');
   }),
 );
