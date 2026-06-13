@@ -199,7 +199,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.reporterId;
       allow read: if isAdmin();
       allow update: if isAdmin();
-      allow delete: if false;
+    }
+
+    // follows
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if isUser(request.resource.data.followerId);
+      allow delete: if isUser(resource.data.followerId);
+      allow update: if false;
     }
   }
 }

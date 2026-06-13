@@ -248,6 +248,10 @@ authRouter.patch(
       updates.profilePhotoUrl = req.body.profilePhotoUrl.trim();
     }
 
+    if (typeof req.body.bio === 'string') {
+      updates.bio = req.body.bio.trim();
+    }
+
     if (req.body.isOwner !== undefined) {
       updates.isOwner = toBoolean(req.body.isOwner);
     }
