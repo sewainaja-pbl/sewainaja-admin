@@ -32,64 +32,154 @@ const validateRegisterBody = (body: Record<string, unknown>) => {
   };
 };
 
+// POST /auth/register
+// Hanya validasi duplikat email & phone — TIDAK membuat akun Firebase.
+// Akun Firebase dibuat dari sisi Flutter setelah OTP berhasil diverifikasi.
 authRouter.post(
   '/register',
   asyncHandler(async (req, res) => {
     const input = validateRegisterBody(req.body ?? {});
 
     if (!input) {
-      return fail(res, ERROR_CODES.INVALID_INPUT, 'Data registrasi tidak valid', 400);
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Data registrasi tidak valid. Pastikan semua kolom diisi.', 400);
     }
 
-    const existing = await auth.getUserByEmail(input.email).catch(() => null);
-    if (existing) {
-      return fail(res, ERROR_CODES.CONFLICT, 'Email sudah terdaftar', 409);
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(input.email)) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Format email tidak valid', 400);
     }
 
-    const userRecord = await auth.createUser({
-      email: input.email,
-      password: input.password,
-      displayName: input.name,
-      phoneNumber: input.phone,
-    });
+    // Validasi format nomor HP Indonesia (E.164: +62xxx)
+    const phoneRegex = /^\+62\d{7,12}$/;
+    if (!phoneRegex.test(input.phone)) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Format nomor HP tidak valid. Gunakan format +62xxx.', 400);
+    }
 
+    // Validasi password minimal 8 karakter
+    if (input.password.length < 8) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Password minimal 8 karakter', 400);
+    }
+
+    // Cek duplikasi email di Firebase Auth
+    const existingByEmail = await auth.getUserByEmail(input.email).catch(() => null);
+    if (existingByEmail) {
+      return fail(res, ERROR_CODES.EMAIL_TAKEN, 'Email sudah digunakan oleh akun lain', 409);
+    }
+
+    // Cek duplikasi nomor HP di Firestore
+    const phoneQuery = await db
+      .collection('users')
+      .where('phone', '==', input.phone)
+      .limit(1)
+      .get();
+    if (!phoneQuery.empty) {
+      return fail(res, ERROR_CODES.PHONE_TAKEN, 'Nomor HP sudah terdaftar', 409);
+    }
+
+    // Validasi lolos — Flutter akan trigger Firebase Phone Auth setelah ini
+    return ok(res, null, 'Nomor HP siap diverifikasi');
+  }),
+);
+
+// POST /auth/complete-register
+// Dipanggil setelah OTP berhasil diverifikasi dan akun Firebase sudah dibuat oleh Flutter.
+// Membuat dokumen Firestore users/{uid}, set custom claims, dan insert admin_task KYC.
+authRouter.post(
+  '/complete-register',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const uid = req.user?.uid;
+    if (!uid) {
+      return fail(res, ERROR_CODES.UNAUTHORIZED, 'Token tidak valid', 401);
+    }
+
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
+
+    if (!name || !email || !phone) {
+      return fail(res, ERROR_CODES.INVALID_INPUT, 'Data profil tidak lengkap', 400);
+    }
+
+    // Cek apakah dokumen user sudah ada (idempoten — aman dipanggil ulang)
+    const existingDoc = await db.collection('users').doc(uid).get();
+    if (existingDoc.exists) {
+      return ok(res, { uid, status: existingDoc.data()?.status }, 'Profil sudah terbuat');
+    }
+
+    const timestamp = now();
+
+    // Buat dokumen Firestore users/{uid} sesuai schema DATABASE.md
     const userDoc: UserDoc = {
-      id: userRecord.uid,
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      isOwner: input.isOwner,
-      isRenter: input.isRenter,
+      id: uid,
+      name,
+      email,
+      phone,
+      bio: '',
+      isOwner: false,
+      isRenter: true,
       isAdmin: false,
-      status: 'unverified',
+      status: 'pending',
       profilePhotoUrl: '',
       ktpPhotoUrl: '',
       selfiePhotoUrl: '',
       avgRatingAsRenter: 0,
       avgRatingAsOwner: 0,
       totalTransactions: 0,
+      followersCount: 0,
       fcmToken: '',
-      createdAt: now(),
-      updatedAt: now(),
+      walletBalance: 0,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     try {
-      await db.collection('users').doc(userRecord.uid).set(userDoc);
+      // Gunakan batch write: Firestore doc + admin_task harus atomik
+      const batch = db.batch();
+
+      // 1. Buat dokumen users/{uid}
+      const userRef = db.collection('users').doc(uid);
+      batch.set(userRef, userDoc);
+
+      // 2. Insert admin_task untuk antrian review KYC
+      const adminTaskRef = db.collection('admin_tasks').doc();
+      batch.set(adminTaskRef, {
+        id: adminTaskRef.id,
+        type: 'kyc_review',
+        title: `Review KTP untuk ${name}`,
+        description: `User baru ${name} (${email}) telah mendaftar dan menunggu review KYC.`,
+        refId: uid,
+        refType: 'user',
+        priority: 'normal',
+        status: 'pending',
+        assignedTo: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        doneAt: null,
+      });
+
+      await batch.commit();
     } catch {
-      await auth.deleteUser(userRecord.uid).catch(() => undefined);
-      return fail(res, ERROR_CODES.INTERNAL_ERROR, 'Gagal menyimpan profil user', 500);
+      // Jika Firestore gagal, hapus akun Firebase agar tidak ada orphan user
+      await auth.deleteUser(uid).catch(() => undefined);
+      return fail(res, ERROR_CODES.INTERNAL_ERROR, 'Gagal menyimpan profil. Silakan coba lagi.', 500);
     }
 
-    return ok(
-      res,
-      {
-        uid: userRecord.uid,
-        status: userDoc.status,
-        isOwner: userDoc.isOwner,
-        isRenter: userDoc.isRenter,
-      },
-      'Registrasi berhasil',
-    );
+    // Set custom claims: verified=false, role="user"
+    // (verified=true hanya setelah admin approve KYC)
+    try {
+      await auth.setCustomUserClaims(uid, { verified: false, role: 'user' });
+    } catch (err) {
+      // Custom claims gagal tidak membatalkan registrasi — admin bisa set manual
+      console.error('[complete-register] Gagal set custom claims:', err);
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: { uid, status: 'pending' },
+      message: 'Registrasi berhasil. Akun sedang dalam review.',
+    });
   }),
 );
 
