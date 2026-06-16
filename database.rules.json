@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "gps_live": {
+      "$transactionId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
