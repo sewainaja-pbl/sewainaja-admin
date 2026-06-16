@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { db, now } from './lib/firebase-admin';
-import { createNotification } from './routes/notifications';
+import { createNotification } from './lib/notifications';
 
 export const checkOverdueTransactions = onSchedule('every 1 minutes', async (event) => {
   const transactionsRef = db.collection('transactions');

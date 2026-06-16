@@ -11,6 +11,7 @@ export interface UserDoc {
   name: string;
   email: string;
   phone: string;
+  bio?: string;
   isOwner: boolean;
   isRenter: boolean;
   isAdmin: boolean;
@@ -21,6 +22,8 @@ export interface UserDoc {
   avgRatingAsRenter: number;
   avgRatingAsOwner: number;
   totalTransactions: number;
+  followersCount?: number;
+  walletBalance?: number;
   fcmToken: string;
   createdAt: unknown;
   updatedAt: unknown;
