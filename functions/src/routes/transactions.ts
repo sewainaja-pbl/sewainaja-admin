@@ -619,6 +619,11 @@ transactionsRouter.post(
 
     await batch.commit();
 
+    // Delete GPS live tracking node from RTDB
+    admin.database().ref(`gps_live/${id}`).remove().catch((err) => {
+      console.error(`Failed to delete RTDB gps_live node for transaction ${id}:`, err);
+    });
+
     // Fetch item name to include in notifications
     const detailsSnap = await docRef.collection('transaction_details').limit(1).get();
     const itemName = !detailsSnap.empty ? detailsSnap.docs[0].data().itemNameSnapshot : 'barang';

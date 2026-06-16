@@ -172,3 +172,4 @@ export const onNotificationCreated = onDocumentCreated(
 );
 
 export default api;
+export { checkOverdueTransactions } from './cron';
