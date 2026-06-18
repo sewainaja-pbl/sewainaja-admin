@@ -21,7 +21,8 @@ interface UserDoc {
   isOwner?: boolean;
   isRenter?: boolean;
   isAdmin?: boolean;
-  status: 'unverified' | 'pending' | 'verified' | 'suspended';
+  status: 'unverified' | 'pending' | 'verified' | 'suspended' | 'rejected';
+  rejectionReason?: string;
   ktpPhotoUrl?: string;
   selfiePhotoUrl?: string;
   createdAt?: Timestamp | FirestoreTimestampLike | string;
@@ -54,6 +55,13 @@ export default function UsersManagement() {
   const [selectedUser, setSelectedUser] = useState<UserDoc | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+
+  useEffect(() => {
+    setIsRejecting(false);
+    setRejectionReasonInput('');
+  }, [selectedUser]);
 
   const getErrorMessage = (error: unknown, fallback: string) => {
     if (error instanceof Error && error.message) return error.message;
@@ -96,19 +104,25 @@ export default function UsersManagement() {
     return () => window.clearTimeout(timer);
   }, [fetchUsers]);
 
-  const handleStatusUpdate = async (userId: string, action: 'approve' | 'reject') => {
+  const handleStatusUpdate = async (userId: string, action: 'approve' | 'reject', rejectionReason?: string) => {
     setUpdatingUserId(userId);
     setActionError(null);
     try {
       const response = await fetchWithAuth<ApiResponse<unknown>>(`/admin/users/${userId}/${action}`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: action === 'reject' ? { 'Content-Type': 'application/json' } : undefined,
+        body: action === 'reject' ? JSON.stringify({ rejectionReason }) : undefined
       });
       
       if (response.success) {
         // Update local state
         setUsers(prev => prev.map(u => {
           if (u.id === userId) {
-            return { ...u, status: action === 'approve' ? 'verified' : 'suspended' };
+            return {
+              ...u,
+              status: action === 'approve' ? 'verified' : 'rejected',
+              rejectionReason: action === 'reject' ? rejectionReason : ''
+            };
           }
           return u;
         }));
@@ -141,6 +155,7 @@ export default function UsersManagement() {
     switch (status) {
       case 'verified': return { status: 'success' as const, label: 'Verified' };
       case 'suspended': return { status: 'error' as const, label: 'Suspended' };
+      case 'rejected': return { status: 'error' as const, label: 'Rejected' };
       case 'pending': return { status: 'pending' as const, label: 'Pending' };
       case 'unverified':
       default: return { status: 'unverified' as const, label: 'Unverified' };
@@ -367,6 +382,12 @@ export default function UsersManagement() {
                         {selectedUser.isOwner ? <CheckCircle2 size={16} className="text-status-success" /> : <XCircle size={16} className="text-text-tertiary" />}
                       </div>
                     </div>
+                    {selectedUser.status === 'rejected' && selectedUser.rejectionReason && (
+                      <div className="mt-4 p-3.5 bg-status-error/10 border border-status-error/20 rounded-[var(--radius-md)] text-status-error text-[13px] flex flex-col gap-1">
+                        <span className="font-bold uppercase tracking-wider text-[11px] text-status-error/80">Rejection Reason</span>
+                        <span className="font-medium">{selectedUser.rejectionReason}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -444,32 +465,64 @@ export default function UsersManagement() {
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="p-6 border-t border-black/5 bg-surface flex justify-between items-center">
-              <button 
-                onClick={() => setSelectedUser(null)}
-                className="px-5 py-2.5 text-[14px] font-medium text-text-secondary hover:text-text-primary transition-colors"
-              >
-                Close
-              </button>
-              
-              {selectedUser.status === 'pending' && (
-                <div className="flex gap-3">
+            <div className="p-6 border-t border-black/5 bg-surface flex flex-col gap-4">
+              {isRejecting ? (
+                <div className="w-full flex flex-col gap-3">
+                  <label className="text-[13px] font-semibold text-text-primary">
+                    Reason for Rejection
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Enter the reason why this user's KYC is rejected (e.g. Blurred KTP, mismatched selfie)..."
+                    value={rejectionReasonInput}
+                    onChange={(e) => setRejectionReasonInput(e.target.value)}
+                    className="w-full p-3 bg-background border border-border-color rounded-[var(--radius-md)] text-[14px] text-text-primary focus:outline-none focus:border-status-error transition-all"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setIsRejecting(false)}
+                      className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!!updatingUserId || !rejectionReasonInput.trim()}
+                      onClick={() => handleStatusUpdate(selectedUser.id, 'reject', rejectionReasonInput)}
+                      className="px-5 py-2.5 rounded-full text-[14px] font-medium bg-status-error text-white hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {updatingUserId === selectedUser.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+                      Confirm Reject
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full flex justify-between items-center">
                   <button 
-                    disabled={!!updatingUserId}
-                    onClick={() => handleStatusUpdate(selectedUser.id, 'reject')}
-                    className="px-5 py-2.5 rounded-full text-[14px] font-medium border border-status-error/30 text-status-error hover:bg-status-error/5 transition-all disabled:opacity-50 flex items-center gap-2"
+                    onClick={() => setSelectedUser(null)}
+                    className="px-5 py-2.5 text-[14px] font-medium text-text-secondary hover:text-text-primary transition-colors"
                   >
-                    {updatingUserId === selectedUser.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
-                    Reject User
+                    Close
                   </button>
-                  <button 
-                    disabled={!!updatingUserId}
-                    onClick={() => handleStatusUpdate(selectedUser.id, 'approve')}
-                    className="px-6 py-2.5 rounded-full text-[14px] font-medium bg-primary text-white shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {updatingUserId === selectedUser.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                    Approve & Verify
-                  </button>
+                  
+                  {selectedUser.status === 'pending' && (
+                    <div className="flex gap-3">
+                      <button 
+                        disabled={!!updatingUserId}
+                        onClick={() => setIsRejecting(true)}
+                        className="px-5 py-2.5 rounded-full text-[14px] font-medium border border-status-error/30 text-status-error hover:bg-status-error/5 transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        <XCircle size={16} /> Reject User
+                      </button>
+                      <button 
+                        disabled={!!updatingUserId}
+                        onClick={() => handleStatusUpdate(selectedUser.id, 'approve')}
+                        className="px-6 py-2.5 rounded-full text-[14px] font-medium bg-primary text-white shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {updatingUserId === selectedUser.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        Approve & Verify
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

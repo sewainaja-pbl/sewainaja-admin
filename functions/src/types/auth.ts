@@ -1,4 +1,4 @@
-export type UserStatus = 'unverified' | 'pending' | 'verified' | 'suspended';
+export type UserStatus = 'unverified' | 'pending' | 'verified' | 'suspended' | 'rejected';
 
 export interface RequestUser {
   uid: string;
@@ -16,6 +16,7 @@ export interface UserDoc {
   isRenter: boolean;
   isAdmin: boolean;
   status: UserStatus;
+  rejectionReason?: string;
   profilePhotoUrl: string;
   ktpPhotoUrl: string;
   selfiePhotoUrl: string;

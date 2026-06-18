@@ -81,6 +81,6 @@ describe('Admin users endpoints', () => {
       .set('Authorization', 'Bearer token-admin');
 
     expect(rejectResponse.status).toBe(200);
-    expect(rejectResponse.body.data.status).toBe('suspended');
+    expect(rejectResponse.body.data.status).toBe('rejected');
   });
 });

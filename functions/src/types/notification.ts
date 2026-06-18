@@ -7,7 +7,8 @@ export type NotificationType =
   | 'payment'
   | 'dispute'
   | 'promo'
-  | 'review';
+  | 'review'
+  | 'chat';
 
 export type NotificationClass = 'transactional' | 'marketing';
 

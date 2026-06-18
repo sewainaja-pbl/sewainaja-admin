@@ -25,6 +25,7 @@ const users = new Map<string, StoredUser>();
 const disputes = new Map<string, StoredDispute>();
 const transactions = new Map<string, any>();
 const payments = new Map<string, any>();
+const admin_tasks = new Map<string, any>();
 
 const authUsersByEmail = new Map<
   string,
@@ -132,12 +133,13 @@ const reset = () => {
   disputes.clear();
   transactions.clear();
   payments.clear();
+  admin_tasks.clear();
   authUsersByEmail.clear();
   tokenClaims.clear();
 };
 
 const collection = (name: string) => {
-  if (name !== 'users' && name !== 'disputes' && name !== 'transactions' && name !== 'payments') {
+  if (name !== 'users' && name !== 'disputes' && name !== 'transactions' && name !== 'payments' && name !== 'admin_tasks') {
     throw new Error(`Unexpected collection: ${name}`);
   }
 
@@ -148,6 +150,8 @@ const collection = (name: string) => {
     store = disputes;
   } else if (name === 'transactions') {
     store = transactions;
+  } else if (name === 'admin_tasks') {
+    store = admin_tasks;
   } else {
     store = payments;
   }
@@ -165,9 +169,19 @@ const collection = (name: string) => {
     const getFilteredDocs = () => {
       let docs = [...store.values()];
       if (field === 'status') {
-        docs = docs.filter((doc) => doc.status === value);
+        if (op === 'in' && Array.isArray(value)) {
+          docs = docs.filter((doc) => (value as any[]).includes(doc.status));
+        } else {
+          docs = docs.filter((doc) => doc.status === value);
+        }
       } else if (field === 'transactionId') {
         docs = docs.filter((doc) => doc.transactionId === value);
+      } else if (field === 'refId') {
+        docs = docs.filter((doc) => doc.refId === value);
+      } else if (field === 'type') {
+        docs = docs.filter((doc) => doc.type === value);
+      } else {
+        docs = docs.filter((doc) => doc[field] === value);
       }
       return docs.map((doc) => ({
         id: doc.id,
@@ -187,12 +201,12 @@ const collection = (name: string) => {
       limit: (count: number) => ({
         get: async () => {
           const docs = getFilteredDocs().slice(0, count);
-          return { docs };
+          return { docs, empty: docs.length === 0 };
         },
       }),
       get: async () => {
         const docs = getFilteredDocs();
-        return { docs };
+        return { docs, empty: docs.length === 0 };
       },
     };
     return query;
