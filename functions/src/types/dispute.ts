@@ -7,12 +7,22 @@ export interface DisputeDoc {
   reportedBy: string;
   description: string;
   category: DisputeCategory;
-  evidenceUrl: string | null;
+  evidenceUrl: string | null; // Keep for backward compatibility
+  evidenceUrls?: string[]; // Multiple photos support for reporter
   status: DisputeStatus;
   resolutionNote: string | null;
   resolvedBy: string | null;
   createdAt: unknown;
   resolvedAt: unknown | null;
+  deadlineAt?: unknown; // SLA 3x24h
+  isOverdue?: boolean;
+
+  // Respondent / Terlapor fields
+  respondentId: string | null;
+  respondentName: string | null;
+  respondentDescription: string | null;
+  respondentEvidenceUrls: string[]; // Rebuttal photos from respondent
+  respondentRespondedAt: unknown | null;
 
   reporterName: string;
   renterName: string;

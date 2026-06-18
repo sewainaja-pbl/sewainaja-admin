@@ -284,6 +284,7 @@ authRouter.post(
       selfiePhotoUrl,
       ktpPhotoUrl,
       status: 'pending',
+      rejectionReason: '',
       updatedAt: now(),
     });
 
@@ -296,6 +297,23 @@ authRouter.post(
       type: 'request',
       title: 'Pengunggahan Berkas KYC',
       body: `User ${userName} telah mengunggah berkas KTP dan selfie untuk verifikasi akun.`,
+    });
+
+    // Buat admin_task baru agar muncul di antrian review admin dashboard
+    const adminTaskRef = db.collection('admin_tasks').doc();
+    await adminTaskRef.set({
+      id: adminTaskRef.id,
+      type: 'kyc_review',
+      title: `Review KTP untuk ${userName}`,
+      description: `User ${userName} (${userData?.email || ''}) telah mengunggah berkas KYC untuk verifikasi.`,
+      refId: uid,
+      refType: 'user',
+      priority: 'normal',
+      status: 'pending',
+      assignedTo: null,
+      createdAt: now(),
+      updatedAt: now(),
+      doneAt: null,
     });
 
     return ok(res, { selfiePhotoUrl, ktpPhotoUrl, status: 'pending' }, 'Berkas KYC berhasil diunggah');

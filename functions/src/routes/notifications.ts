@@ -33,6 +33,7 @@ const TESTABLE_TYPES: NotificationType[] = [
   'dispute',
   'promo',
   'review',
+  'chat',
 ];
 
 const assertRateLimit = (key: string) => {
