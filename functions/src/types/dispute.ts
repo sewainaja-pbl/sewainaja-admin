@@ -1,5 +1,5 @@
 export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'closed';
-export type DisputeCategory = 'handover_rejection' | 'ongoing_damage' | 'checkout_damage';
+export type DisputeCategory = 'handover_rejection' | 'ongoing_damage' | 'checkout_damage' | 'other' | 'overdue_report';
 
 export interface DisputeDoc {
   id: string;

@@ -53,6 +53,14 @@ service firebase.storage {
         isWithinSizeLimit(3 * 1024 * 1024);
     }
 
+    // Chat media files
+    match /chat_media/{roomId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() &&
+        isImageUpload() &&
+        isWithinSizeLimit(3 * 1024 * 1024);
+    }
+
     // Deny everything else by default.
     match /{allPaths=**} {
       allow read, write: if false;
