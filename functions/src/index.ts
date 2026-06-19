@@ -66,6 +66,8 @@ export const onNotificationCreated = onDocumentCreated(
 
     // Jika isSent sudah true (dibuat oleh backend langsung), skip.
     if (data['isSent'] === true) return;
+    // Jika source dari backend, skip karena backend akan/sudah mengirimkan push notifikasi.
+    if (data['source'] === 'backend') return;
     // Jika scheduledAt ada (penjadwalan), skip — biarkan proses scheduler yang handle.
     if (data['scheduledAt'] != null) return;
 

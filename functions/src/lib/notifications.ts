@@ -94,6 +94,8 @@ const buildNotificationData = (input: CreateNotificationInput) => {
     attempt: 1,
   };
 
+  (data as any).source = 'backend';
+
   return data;
 };
 
