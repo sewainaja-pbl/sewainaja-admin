@@ -198,6 +198,8 @@ export default function DisputesManagement() {
       case 'handover_rejection': return 'Masalah Serah Terima Awal (COD)';
       case 'ongoing_damage': return 'Kerusakan Selama Masa Sewa';
       case 'checkout_damage': return 'Kerusakan/Kehilangan Pengembalian';
+      case 'other': return 'Lainnya';
+      case 'overdue_report': return 'Laporan Keterlambatan';
       default: return category;
     }
   };

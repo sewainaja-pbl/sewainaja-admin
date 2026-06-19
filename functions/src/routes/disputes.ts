@@ -26,7 +26,7 @@ disputesRouter.post(
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Data klaim sengketa tidak lengkap', 400);
     }
 
-    if (!['handover_rejection', 'ongoing_damage', 'checkout_damage'].includes(category)) {
+    if (!['handover_rejection', 'ongoing_damage', 'checkout_damage', 'other', 'overdue_report'].includes(category)) {
       return fail(res, ERROR_CODES.INVALID_INPUT, 'Kategori sengketa tidak valid', 400);
     }
 
