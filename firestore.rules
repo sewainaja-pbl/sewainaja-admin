@@ -43,6 +43,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // app_stats_history
+    match /app_stats_history/{historyId} {
+      allow read, write: if isAdmin();
+    }
+
     // admin_tasks
     match /admin_tasks/{taskId} {
       allow read, write: if isAdmin();

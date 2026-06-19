@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import Link from 'next/link';
-import { Users, Clock, AlertTriangle, RefreshCw, ChevronDown, MoreHorizontal, ChevronRight, Loader2 } from 'lucide-react';
+import { Users, Clock, AlertTriangle, RefreshCw, MoreHorizontal, ChevronRight, Loader2, Download } from 'lucide-react';
 import { db } from '@/lib/firestore';
-import { collection, doc, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
 
 interface DashboardTask { id: string; title?: string; type?: string; createdAt?: { seconds: number }; priority?: string; status?: string; description?: string; refId?: string; }
 interface DashboardUser { id: string; name: string; isOwner?: boolean; status?: string; }
@@ -25,30 +25,41 @@ export default function Home() {
   const [tasks, setTasks] = useState<DashboardTask[]>([]);
   const [recentUsers, setRecentUsers] = useState<DashboardUser[]>([]);
   const [trafficLogs, setTrafficLogs] = useState<TrafficLog[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        // 1. Fetch App Stats
-        const statsSnap = await getDoc(doc(db, 'app_stats', 'global'));
-        if (statsSnap.exists()) {
-          setStatsData((prev: Record<string, number>) => ({ ...prev, ...(statsSnap.data() as Record<string, number>) }));
-        }
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        const isCurrentMonth = selectedMonth === currentMonth;
 
-        // 2. Fetch Pending Actions
-        const tasksQuery = query(collection(db, 'admin_tasks'), orderBy('createdAt', 'desc'), limit(5));
+        let statsDataObj = {
+          totalUsers: 0, totalPendingApprovals: 0, totalOpenDisputes: 0, 
+          totalOverdueDisputes: 0, totalActiveRentals: 0, totalTransactionsActive: 0, 
+          totalTransactionsCompleted: 0, totalTransactionsCancelled: 0
+        };
+        
+        const statsSnap = await getDoc(doc(db, isCurrentMonth ? 'app_stats' : 'app_stats_history', isCurrentMonth ? 'global' : selectedMonth));
+        if (statsSnap.exists()) {
+          statsDataObj = { ...statsDataObj, ...(statsSnap.data() as any) };
+        }
+        setStatsData(statsDataObj);
+
+        const [year, month] = selectedMonth.split('-');
+        const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+
+        const tasksQuery = query(collection(db, 'admin_tasks'), where('createdAt', '>=', startDate), where('createdAt', '<=', endDate), orderBy('createdAt', 'desc'), limit(5));
         const tasksSnap = await getDocs(tasksQuery);
         setTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardTask)));
 
-        // 3. Fetch Recent Users
-        const usersQuery = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(4));
+        const usersQuery = query(collection(db, 'users'), where('createdAt', '>=', startDate), where('createdAt', '<=', endDate), orderBy('createdAt', 'desc'), limit(4));
         const usersSnap = await getDocs(usersQuery);
         setRecentUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as DashboardUser)));
 
-        // 4. Fetch Traffic Logs
-        const trafficQuery = query(collection(db, 'user_activity_logs'), orderBy('date', 'desc'), limit(7));
+        const trafficQuery = query(collection(db, 'user_activity_logs'), where('month', '==', selectedMonth));
         const trafficSnap = await getDocs(trafficQuery);
         setTrafficLogs(trafficSnap.docs.map(d => ({ id: d.id, ...d.data() } as TrafficLog)));
 
@@ -59,8 +70,14 @@ export default function Home() {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    fetchData();
+  }, [selectedMonth]);
+
+  const handleExportPDF = () => {
+    // html2canvas tidak mendukung format warna oklab/oklch bawaan Tailwind v4.
+    // window.print() adalah cara paling tangguh dan asli untuk mencetak PDF berbasis vektor
+    window.print();
+  };
 
   const stats = [
     { title: 'Total Users', value: statsData?.totalUsers?.toLocaleString() || '0', subtitle: 'Verified accounts', icon: Users, variant: 'dark' },
@@ -108,21 +125,27 @@ export default function Home() {
   const normalTasks = tasks.filter(t => t.id !== urgentTask?.id).slice(0, 4);
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex justify-between items-end mb-2">
+    <div className="flex flex-col gap-6 bg-background rounded-xl" id="dashboard-content">
+      <header className="flex justify-between items-end mb-2 p-2 print:hidden">
         <div>
           <h1 className="text-[26px] font-semibold text-text-primary m-0 mb-1">Hello, Admin! 👋</h1>
           <p className="text-[14px] text-text-secondary m-0">Welcome back! Here&apos;s your platform overview.</p>
         </div>
         <div className="flex gap-4 items-center">
-          <div className="px-4 py-2.5 bg-surface rounded-full text-[13px] font-medium text-text-secondary shadow-[var(--shadow-soft)] flex items-center gap-2">
-            This Month
-            <ChevronDown size={14} />
+          <div className="relative flex items-center bg-surface rounded-full shadow-[var(--shadow-soft)] px-3 py-2 text-[13px] font-medium text-text-secondary border border-border-color/30 hover:border-border-color transition-colors">
+            <input 
+              type="month" 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent border-none outline-none cursor-pointer text-text-primary [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 transition-opacity"
+            />
           </div>
           <button 
-            className="px-5 py-2.5 rounded-full text-[13px] font-medium bg-primary text-white shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:shadow-[0_6px_16px_rgba(1,45,29,0.3)] hover:brightness-110 transition-all active:scale-95"
+            onClick={handleExportPDF}
+            className="px-5 py-2.5 flex items-center gap-2 rounded-full text-[13px] font-medium bg-primary text-white shadow-[0_4px_12px_rgba(1,45,29,0.2)] hover:shadow-[0_6px_16px_rgba(1,45,29,0.3)] hover:brightness-110 transition-all active:scale-95"
           >
-            Export report
+            <Download size={16} />
+            Export PDF
           </button>
         </div>
       </header>
@@ -203,12 +226,7 @@ export default function Home() {
           <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
             <div>
               <h3 className="text-[16px] font-semibold text-text-primary m-0">Traffic Pengguna</h3>
-              <p className="text-[12px] font-medium text-text-tertiary mt-1 mb-0">{(totalVisitors / 1000).toFixed(1)}k active visitors this week</p>
-            </div>
-            <div className="flex bg-background p-1 rounded-full border border-border-color/50">
-              <span className="px-4 py-1.5 text-[11px] font-bold rounded-full cursor-pointer bg-primary text-white shadow-md transition-all">Weekly</span>
-              <span className="px-4 py-1.5 text-[11px] font-semibold text-text-secondary rounded-full cursor-pointer hover:bg-white/50 transition-all">Monthly</span>
-              <span className="px-4 py-1.5 text-[11px] font-semibold text-text-secondary rounded-full cursor-pointer hover:bg-white/50 transition-all">Annually</span>
+              <p className="text-[12px] font-medium text-text-tertiary mt-1 mb-0">{(totalVisitors / 1000).toFixed(1)}k active visitors in {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             </div>
           </div>
           <div className="flex-1 min-h-[220px] mt-4 relative">
@@ -240,8 +258,8 @@ export default function Home() {
                       const sortedData = [...trafficLogs].sort((a, b) => a.date.localeCompare(b.date));
                       const maxVal = Math.max(...sortedData.map(d => d.activeUsers), 1);
                       const points = sortedData.map((d, i) => ({
-                        x: (i / (sortedData.length - 1)) * 400,
-                        y: 180 - ((d.activeUsers / maxVal) * 160),
+                        x: sortedData.length === 1 ? 200 : (i / (sortedData.length - 1)) * 400,
+                        y: 180 - (((d.activeUsers || 0) / maxVal) * 160),
                         data: d
                       }));
 
@@ -278,11 +296,14 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="flex justify-between mt-4">
-                  {[...trafficLogs].sort((a, b) => a.date.localeCompare(b.date)).map((d, i) => (
-                    <span key={i} className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider">
-                      {new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </span>
-                  ))}
+                  {[...trafficLogs].sort((a, b) => a.date.localeCompare(b.date)).map((d, i, arr) => {
+                    const isVisible = i % Math.ceil(arr.length / 7) === 0 || i === arr.length - 1;
+                    return (
+                      <span key={i} className={`text-[10px] font-medium text-text-tertiary uppercase tracking-wider ${isVisible ? '' : 'opacity-0'}`} style={{ width: '20px', textAlign: 'center' }}>
+                        {new Date(d.date).getDate()}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
