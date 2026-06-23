@@ -32,7 +32,7 @@ const Sidebar = () => {
       {/* Top Navigation Pill */}
       <nav className="bg-surface rounded-[36px] p-2.5 flex flex-col gap-2 shadow-[var(--shadow-soft)] w-full">
         <div className="flex items-center justify-center pt-2 pb-2 mb-2">
-          <Image src="/logo.svg" alt="SewainAja Logo" width={32} height={32} className="object-contain shrink-0" />
+          <Image src="/logo.png" alt="SewainAja Logo" width={32} height={32} className="object-contain shrink-0" />
         </div>
         <Link 
           href="/dashboard" 

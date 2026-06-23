@@ -129,6 +129,19 @@ disputesRouter.post(
       transactionId: String(transactionId),
     });
 
+    // Kirim notifikasi ke pihak terlapor (tergugat)
+    const respondentId = uid === trans.renterId ? trans.ownerId : trans.renterId;
+    createNotification({
+      userId: respondentId,
+      type: 'dispute',
+      class: 'transactional',
+      title: 'Transaksi Masuk Sengketa',
+      body: `${reporterName} telah mengajukan klaim sengketa untuk transaksi Anda. Harap berikan sanggahan.`,
+      transactionId: String(transactionId),
+    }).catch(err => {
+      console.error('[Notification Error] Failed to send dispute notification to respondent:', err);
+    });
+
     return ok(res, { id: disputeRef.id, ...createdSnap.data() }, 'Klaim sengketa berhasil diajukan, admin akan segera meninjau.');
   }),
 );

@@ -579,7 +579,7 @@ export default function DisputesManagement() {
                     <div className="border-b pb-2.5 border-black/5">
                       <span className="text-[11px] text-primary font-bold uppercase block tracking-wider">Pihak Terlapor (Tergugat)</span>
                       <h4 className="text-[15px] font-bold text-text-primary mt-0.5">
-                        {selectedDispute.respondentName || (selectedDispute.reportedBy === selectedDispute.renterName ? 'Owner' : selectedDispute.renterName)}
+                        {selectedDispute.respondentName || (selectedDispute.reporterName === selectedDispute.renterName ? 'Pemilik (Owner)' : selectedDispute.renterName)}
                       </h4>
                     </div>
 
