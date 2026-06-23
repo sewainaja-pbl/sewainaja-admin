@@ -6,6 +6,7 @@ import { ERROR_CODES } from '../errors';
 import { requireAuth } from '../middleware/require-auth';
 import { requireAdmin } from '../middleware/require-admin';
 import { asyncHandler } from '../lib/async-handler';
+import { createNotification } from '../lib/notifications';
 
 export const adminDisputesRouter = Router();
 
@@ -156,6 +157,33 @@ adminDisputesRouter.patch(
     }
 
     await batch.commit();
+
+    // Kirim notifikasi hasil resolusi ke Renter dan Owner
+    if (trans) {
+      const decisionLabel = decision === 'refund_to_renter' ? 'Refund ke Penyewa' : 'Pencairan ke Pemilik';
+      
+      createNotification({
+        userId: trans.renterId,
+        type: 'dispute',
+        class: 'transactional',
+        title: 'Sengketa Transaksi Selesai',
+        body: `Sengketa transaksi ${transId} diselesaikan oleh admin. Keputusan: ${decisionLabel}.`,
+        transactionId: transId,
+      }).catch(err => {
+        console.error('[Notification Error] Failed to send dispute resolution notification to renter:', err);
+      });
+
+      createNotification({
+        userId: trans.ownerId,
+        type: 'dispute',
+        class: 'transactional',
+        title: 'Sengketa Transaksi Selesai',
+        body: `Sengketa transaksi ${transId} diselesaikan oleh admin. Keputusan: ${decisionLabel}.`,
+        transactionId: transId,
+      }).catch(err => {
+        console.error('[Notification Error] Failed to send dispute resolution notification to owner:', err);
+      });
+    }
 
     const updated = await docRef.get();
     return ok(res, { id, ...updated.data() }, 'Sengketa berhasil diselesaikan');

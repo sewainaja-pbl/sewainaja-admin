@@ -208,3 +208,105 @@ export const resetMonthlyStats = onSchedule('0 0 1 * *', async (event) => {
     });
   });
 });
+
+export const checkExpiredTransactions = onSchedule('every 5 minutes', async (event) => {
+  const transactionsRef = db.collection('transactions');
+  
+  // Ambil transaksi yang rentan kedaluwarsa (pending atau approved)
+  const snapshot = await transactionsRef
+    .where('status', 'in', ['pending', 'approved'])
+    .get();
+
+  if (snapshot.empty) return;
+
+  const batch = db.batch();
+  const notifyPromises: Promise<any>[] = [];
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    const txId = doc.id;
+
+    // Cari minStartDate dari subcollection transaction_details
+    const detailsSnap = await doc.ref.collection('transaction_details').get();
+    let minStartDate = new Date(8640000000000000); // Far future
+    let itemName = 'Barang';
+
+    for (const detailDoc of detailsSnap.docs) {
+      const detail = detailDoc.data();
+      const sDate = detail.startDate?.toDate();
+      if (sDate && sDate < minStartDate) {
+        minStartDate = sDate;
+        itemName = detail.itemNameSnapshot || 'Barang';
+      }
+    }
+
+    // Jika tanggal sewa sudah dimulai
+    if (minStartDate.getTime() < Date.now()) {
+      if (data.status === 'pending') {
+        // Pemilik tidak merespons tepat waktu
+        batch.update(doc.ref, {
+          status: 'cancelled',
+          cancellationReason: 'Permintaan sewa otomatis dibatalkan karena melewati waktu mulai sewa tanpa persetujuan pemilik.',
+          updatedAt: now()
+        });
+
+        notifyPromises.push(
+          createNotification({
+            userId: data.renterId,
+            type: 'rejected',
+            class: 'transactional',
+            title: 'Permintaan Sewa Kedaluwarsa',
+            body: `Permintaan sewa ${itemName} dibatalkan otomatis karena tidak disetujui pemilik tepat waktu.`,
+            transactionId: txId,
+          }),
+          createNotification({
+            userId: data.ownerId,
+            type: 'rejected',
+            class: 'transactional',
+            title: 'Permintaan Sewa Kedaluwarsa',
+            body: `Permintaan sewa ${itemName} oleh ${data.renterName} dibatalkan otomatis karena Anda tidak menyetujuinya sebelum waktu sewa dimulai.`,
+            transactionId: txId,
+          })
+        );
+      } else if (data.status === 'approved') {
+        // Periksa apakah ada pembayaran sukses
+        const paymentsSnap = await db.collection('payments')
+          .where('transactionId', '==', txId)
+          .where('status', '==', 'paid')
+          .get();
+
+        if (paymentsSnap.empty) {
+          // Penyewa tidak membayar tepat waktu
+          batch.update(doc.ref, {
+            status: 'cancelled',
+            cancellationReason: 'Transaksi otomatis dibatalkan karena tidak diselesaikan pembayarannya sebelum waktu sewa dimulai.',
+            updatedAt: now()
+          });
+
+          notifyPromises.push(
+            createNotification({
+              userId: data.renterId,
+              type: 'rejected',
+              class: 'transactional',
+              title: 'Transaksi Sewa Dibatalkan',
+              body: `Transaksi sewa ${itemName} dibatalkan otomatis karena Anda tidak menyelesaikan pembayaran tepat waktu.`,
+              transactionId: txId,
+            }),
+            createNotification({
+              userId: data.ownerId,
+              type: 'rejected',
+              class: 'transactional',
+              title: 'Transaksi Sewa Dibatalkan',
+              body: `Transaksi sewa ${itemName} oleh ${data.renterName} dibatalkan otomatis karena penyewa tidak melakukan pembayaran tepat waktu.`,
+              transactionId: txId,
+            })
+          );
+        }
+      }
+    }
+  }
+
+  await batch.commit();
+  await Promise.allSettled(notifyPromises);
+});
+

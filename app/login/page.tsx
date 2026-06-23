@@ -115,7 +115,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-[var(--shadow-hover)] mb-4 transition-transform hover:scale-105">
             <img
-              src="/logo.svg"
+              src="/logo.png"
               alt="Logo SewainAja"
               className="w-full h-full object-contain"
             />

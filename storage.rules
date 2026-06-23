@@ -19,11 +19,6 @@ service firebase.storage {
         request.resource.size <= maxBytes;
     }
 
-    function isItemOwner(itemId) {
-      return isAuthenticated() &&
-        firestore.get(/databases/(default)/documents/items/$(itemId)).data.ownerId == request.auth.uid;
-    }
-
     // Public read so uploaded photos can be rendered by the mobile app and admin dashboard.
     // Write access is restricted per folder below.
 
@@ -45,20 +40,46 @@ service firebase.storage {
         isWithinSizeLimit(1 * 1024 * 1024);
     }
 
-    // Item gallery photos: only the item owner may upload/update/delete.
+    // User KYC documents: only the user themselves can write their own KYC documents.
+    // Reads are restricted to the user themselves and admin for privacy.
+    match /users/{userId}/kyc/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() &&
+        request.auth.uid == userId &&
+        isImageUpload() &&
+        isWithinSizeLimit(4 * 1024 * 1024);
+    }
+
+    // Item gallery photos: only authenticated users can upload photos.
     match /items/{itemId}/photos/{fileName} {
       allow read: if true;
-      allow write: if isItemOwner(itemId) &&
+      allow write: if isAuthenticated() &&
         isImageUpload() &&
         isWithinSizeLimit(3 * 1024 * 1024);
     }
 
     // Chat media files
     match /chat_media/{roomId}/{fileName} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
         isImageUpload() &&
         isWithinSizeLimit(3 * 1024 * 1024);
+    }
+
+    // Transaction evidence files: restricted to authenticated users.
+    match /transactions/{transactionId}/evidences/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+        isImageUpload() &&
+        isWithinSizeLimit(4 * 1024 * 1024);
+    }
+
+    // Dispute evidence files: restricted to authenticated users.
+    match /disputes/{transactionId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+        isImageUpload() &&
+        isWithinSizeLimit(4 * 1024 * 1024);
     }
 
     // Deny everything else by default.

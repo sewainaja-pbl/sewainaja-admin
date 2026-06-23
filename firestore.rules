@@ -20,8 +20,12 @@ service cloud.firestore {
     match /users/{userId} {
       // Semua orang bisa baca info basic (utk lihat profil renter/owner)
       allow read: if isAuthenticated(); 
-      // Hanya user yang bersangkutan atau admin yang boleh update
-      allow update: if isUser(userId) || isAdmin();
+      // Hanya user yang bersangkutan atau admin yang boleh update.
+      // Pengguna biasa dilarang keras mengubah status verifikasi (status), hak akses (role), atau email secara langsung.
+      allow update: if isAdmin() || (
+        isUser(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'role', 'email'])
+      );
       // Pembuatan user dilakukan via backend setelah registrasi Auth
       allow create, delete: if false; 
       

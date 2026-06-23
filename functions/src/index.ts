@@ -174,7 +174,7 @@ export const onNotificationCreated = onDocumentCreated(
 );
 
 export default api;
-export { checkOverdueTransactions, generateDailyTrafficLog, resetMonthlyStats } from './cron';
+export { checkOverdueTransactions, generateDailyTrafficLog, resetMonthlyStats, checkExpiredTransactions } from './cron';
 export * from './triggers/users';
 export * from './triggers/transactions';
 export * from './triggers/items';
