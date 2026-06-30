@@ -217,5 +217,13 @@ service cloud.firestore {
       allow delete: if isUser(resource.data.followerId);
       allow update: if false;
     }
+
+    // withdrawals
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
   }
 }
