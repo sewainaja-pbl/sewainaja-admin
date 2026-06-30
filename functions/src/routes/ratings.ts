@@ -11,6 +11,7 @@ export const ratingsRouter = Router();
 
 /**
  * Reusable function to recompute overall average ratings and store on user doc.
+ * Juga melakukan denormalisasi ke semua items milik owner agar rating tampil dinamis.
  */
 const updateUserRatingCache = async (userId: string, ratedAs: 'owner' | 'renter') => {
   const snap = await db.collection('ratings')
@@ -32,6 +33,25 @@ const updateUserRatingCache = async (userId: string, ratedAs: 'owner' | 'renter'
     [fieldName]: avg,
     updatedAt: now()
   });
+
+  // Denormalisasi ownerRating ke semua items milik user ini
+  // agar ProductCard di beranda, kategori, dan profil menampilkan nilai yang dinamis.
+  if (ratedAs === 'owner') {
+    const itemsSnap = await db.collection('items')
+      .where('ownerId', '==', userId)
+      .get();
+
+    if (!itemsSnap.empty) {
+      const batch = db.batch();
+      itemsSnap.docs.forEach(itemDoc => {
+        batch.update(itemDoc.ref, {
+          ownerRating: avg,
+          updatedAt: now()
+        });
+      });
+      await batch.commit();
+    }
+  }
 };
 
 /**
