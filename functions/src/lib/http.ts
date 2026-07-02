@@ -6,6 +6,7 @@ export const ok = (res: Response, data: unknown, message = 'Berhasil') => {
     success: true,
     data,
     message,
+    serverTime: Date.now(),
   });
 };
 

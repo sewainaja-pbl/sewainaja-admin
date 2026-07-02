@@ -1,4 +1,4 @@
-export type UserStatus = 'pending' | 'verified' | 'suspended';
+export type UserStatus = 'unverified' | 'pending' | 'verified' | 'suspended' | 'rejected';
 
 export interface RequestUser {
   uid: string;
@@ -11,18 +11,24 @@ export interface UserDoc {
   name: string;
   email: string;
   phone: string;
+  bio?: string;
   isOwner: boolean;
   isRenter: boolean;
   isAdmin: boolean;
   status: UserStatus;
+  rejectionReason?: string;
+  profilePhotoUrl: string;
   ktpPhotoUrl: string;
   selfiePhotoUrl: string;
   avgRatingAsRenter: number;
   avgRatingAsOwner: number;
   totalTransactions: number;
+  followersCount?: number;
+  walletBalance?: number;
   fcmToken: string;
   createdAt: unknown;
   updatedAt: unknown;
+  lastLoginAt?: unknown;
 }
 
 declare module 'express-serve-static-core' {

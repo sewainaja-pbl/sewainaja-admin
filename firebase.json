@@ -8,9 +8,22 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
   ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
   "emulators": {
     "auth": {
       "port": 9001
@@ -20,6 +33,9 @@
     },
     "firestore": {
       "port": 8001
+    },
+    "storage": {
+      "port": 9199
     },
     "ui": {
       "port": 4444,

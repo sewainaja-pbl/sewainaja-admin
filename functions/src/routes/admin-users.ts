@@ -33,9 +33,31 @@ adminUsersRouter.get(
   }),
 );
 
+const resolveKycTask = async (userId: string) => {
+  const tasksRef = db.collection('admin_tasks');
+  const snapshot = await tasksRef
+    .where('refId', '==', userId)
+    .where('type', '==', 'kyc_review')
+    .where('status', 'in', ['pending', 'in_progress'])
+    .get();
+
+  if (!snapshot.empty) {
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, {
+        status: 'done',
+        updatedAt: new Date(),
+        doneAt: new Date(),
+      });
+    });
+    await batch.commit();
+  }
+};
+
 const updateUserStatus = async (
   id: string,
-  status: 'verified' | 'suspended',
+  status: 'verified' | 'suspended' | 'rejected',
+  rejectionReason?: string,
 ) => {
   const ref = db.collection('users').doc(id);
   const snapshot = await ref.get();
@@ -44,8 +66,15 @@ const updateUserStatus = async (
     return null;
   }
 
-  await ref.update({ status, updatedAt: new Date() });
-  return { id, status };
+  const updateData: Record<string, any> = { status, updatedAt: new Date() };
+  if (rejectionReason !== undefined) {
+    updateData.rejectionReason = rejectionReason;
+  } else if (status === 'verified') {
+    updateData.rejectionReason = '';
+  }
+
+  await ref.update(updateData);
+  return { id, status, rejectionReason: updateData.rejectionReason };
 };
 
 adminUsersRouter.patch(
@@ -58,6 +87,7 @@ adminUsersRouter.patch(
       return fail(res, ERROR_CODES.NOT_FOUND, 'User tidak ditemukan', 404);
     }
 
+    await resolveKycTask(id);
     return ok(res, result, 'User berhasil diapprove');
   }),
 );
@@ -66,12 +96,14 @@ adminUsersRouter.patch(
   '/:id/reject',
   asyncHandler(async (req, res) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const result = await updateUserStatus(id, 'suspended');
+    const rejectionReason = typeof req.body.rejectionReason === 'string' ? req.body.rejectionReason.trim() : '';
+    const result = await updateUserStatus(id, 'rejected', rejectionReason);
 
     if (!result) {
       return fail(res, ERROR_CODES.NOT_FOUND, 'User tidak ditemukan', 404);
     }
 
+    await resolveKycTask(id);
     return ok(res, result, 'User berhasil direject');
   }),
 );

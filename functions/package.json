@@ -1,7 +1,7 @@
 {
   "name": "sewainaja-admin-functions",
   "private": true,
-  "main": "lib/index.js",
+  "main": "lib/src/index.js",
   "engines": {
     "node": "20"
   },
@@ -11,17 +11,33 @@
     "deploy": "firebase deploy --only functions",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "test:smoke": "vitest run src/__tests__/admin.smoke.test.ts",
     "seed:admin": "npx ts-node scripts/seed-admin.ts",
-    "seed:admin:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-admin.ts"
+    "seed:admin:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-admin.ts",
+    "seed:users": "npx ts-node scripts/seed-users.ts",
+    "seed:users:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-users.ts",
+    "seed:categories": "npx ts-node scripts/seed-categories.ts",
+    "seed:categories:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-categories.ts",
+    "seed:dashboard": "npx ts-node scripts/seed-dashboard.ts",
+    "seed:dashboard:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-dashboard.ts",
+    "seed:items": "npx ts-node scripts/seed-items.ts",
+    "seed:items:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-items.ts",
+    "seed:transactions": "npx ts-node scripts/seed-transactions.ts",
+    "seed:transactions:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-transactions.ts",
+    "seed": "npm run seed:admin && npm run seed:users && npm run seed:categories && npm run seed:items && npm run seed:transactions && npm run seed:dashboard",
+    "seed:emulator": "npm run seed:admin:emulator && npm run seed:users:emulator && npm run seed:categories:emulator && npm run seed:items:emulator && npm run seed:transactions:emulator && npm run seed:dashboard:emulator"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.1.0"
+    "firebase-functions": "^6.1.0",
+    "midtrans-client": "^1.4.3",
+    "ngeohash": "^0.6.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.17.0",
     "@types/supertest": "^6.0.2",
     "cross-env": "^10.1.0",
