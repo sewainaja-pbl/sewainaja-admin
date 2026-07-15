@@ -25,18 +25,23 @@
     "seed:transactions": "npx ts-node scripts/seed-transactions.ts",
     "seed:transactions:emulator": "cross-env USE_EMULATOR=true npx ts-node scripts/seed-transactions.ts",
     "seed": "npm run seed:admin && npm run seed:users && npm run seed:categories && npm run seed:items && npm run seed:transactions && npm run seed:dashboard",
-    "seed:emulator": "npm run seed:admin:emulator && npm run seed:users:emulator && npm run seed:categories:emulator && npm run seed:items:emulator && npm run seed:transactions:emulator && npm run seed:dashboard:emulator"
+    "seed:emulator": "npm run seed:admin:emulator && npm run seed:users:emulator && npm run seed:categories:emulator && npm run seed:items:emulator && npm run seed:transactions:emulator && npm run seed:dashboard:emulator",
+    "start:vps": "node lib/src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.5.2",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.1.0",
     "midtrans-client": "^1.4.3",
+    "multer": "^2.2.0",
     "ngeohash": "^0.6.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.2.0",
     "@types/ngeohash": "^0.6.8",
     "@types/node": "^20.17.0",
     "@types/supertest": "^6.0.2",
