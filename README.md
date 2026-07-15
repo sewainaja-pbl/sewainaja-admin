@@ -107,7 +107,7 @@ Keduanya digabung karena berbagi konfigurasi Firebase yang sama — rules, index
 | Database          | Cloud Firestore             |
 | Realtime DB       | Firebase Realtime Database  |
 | Auth              | Firebase Auth               |
-| File Storage      | Firebase Storage            |
+| File Storage      | Cloudinary                  |
 | Push Notification | Firebase Cloud Messaging    |
 | Payment Gateway   | Midtrans (Sandbox)          |
 | Geospatial        | ngeohash                    |
@@ -187,7 +187,7 @@ firebase deploy                     # Semua sekaligus
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Auth domain                 |
 | `NEXT_PUBLIC_FIREBASE_DATABASE_URL`        | Realtime Database URL       |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Firebase Project ID         |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | Storage bucket              |
+
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | FCM sender ID               |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase app ID             |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`      | Analytics measurement ID    |
@@ -201,6 +201,9 @@ firebase deploy                     # Semua sekaligus
 | `FIREBASE_IDENTITY_TOOLKIT_API_KEY` | Web API Key (untuk Identity Toolkit)    |
 | `FIREBASE_PROJECT_ID`               | Firebase Project ID                     |
 | `SERVICE_ACCOUNT_KEY_PATH`          | (Opsional) Path ke service account JSON |
+| `CLOUDINARY_CLOUD_NAME`             | Nama Cloudinary (gratis, 25GB/bulan)    |
+| `CLOUDINARY_API_KEY`                | API Key Cloudinary                      |
+| `CLOUDINARY_API_SECRET`             | API Secret Cloudinary                   |
 
 Salin dari `.env.example` di masing-masing folder.
 

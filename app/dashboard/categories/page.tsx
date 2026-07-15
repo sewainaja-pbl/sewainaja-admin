@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Tags, Search, Plus, Pencil, Trash2, Loader2, X, Check, ImagePlus, AlertCircle } from 'lucide-react';
-import { storage } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { db } from '@/lib/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
 
 interface ItemCategoryDoc {
@@ -92,20 +91,57 @@ export default function CategoriesManagement() {
   };
 
   const uploadImageToStorage = async (file: File, categoryId: string): Promise<string> => {
-    const storageRef = ref(storage, `category_icons/${categoryId}_${Date.now()}_${file.name}`);
-    return new Promise((resolve, reject) => {
-      const task = uploadBytesResumable(storageRef, file);
-      task.on(
-        'state_changed',
-        (snapshot) => {
-          setUploadProgress(Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100));
-        },
-        (error) => reject(error),
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
-          resolve(url);
-        },
-      );
+    return new Promise(async (resolve, reject) => {
+      try {
+        setUploadProgress(10);
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          throw new Error('User not authenticated');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('kind', 'category'); // Folder di Cloudinary
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sewainaja-api.ghufronainun.tech';
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${apiUrl}/uploads/image`);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              if (response.success && response.data?.url) {
+                resolve(response.data.url);
+              } else {
+                reject(new Error(response.error?.message || 'Upload failed'));
+              }
+            } catch (e) {
+              reject(new Error('Invalid response from server'));
+            }
+          } else {
+            try {
+               const errResponse = JSON.parse(xhr.responseText);
+               reject(new Error(errResponse.error?.message || `Upload failed with status ${xhr.status}`));
+            } catch {
+               reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error occurred during upload'));
+        xhr.send(formData);
+      } catch (error) {
+        reject(error);
+      }
     });
   };
 

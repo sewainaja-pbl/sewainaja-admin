@@ -39,7 +39,7 @@ app.use('/uploads', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeade
 
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '2mb' }));
-app.use('/uploads', express.static(process.env.UPLOAD_ROOT || '/var/www/sewainaja-uploads'));
+// Catatan: static file serving dihapus — gambar sekarang di-serve langsung dari Cloudinary
 
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
